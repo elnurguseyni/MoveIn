@@ -368,9 +368,11 @@ h1 {
 }
 
 .dashboard-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 18px;
+  display: block;
+}
+
+.profile-section {
+  margin-bottom: 18px;
 }
 
 .profile-panel {
@@ -381,6 +383,10 @@ h1 {
   color: white;
   border-radius: 18px;
   padding: 18px 20px;
+}
+
+.profile-edit-btn {
+  margin-left: auto;
 }
 
 .profile-avatar {
@@ -1039,6 +1045,15 @@ footer div {
 }
 
 @media (max-width: 560px) {
+  .profile-panel {
+    flex-wrap: wrap;
+  }
+
+  .profile-edit-btn {
+    margin-left: 0;
+    width: 100%;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }

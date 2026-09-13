@@ -798,6 +798,7 @@ function App() {
         <nav>
           <div className="brand">MoveLT <span>/ Lithuania</span></div>
           <div className="navlinks">
+            {currentUser && <a href="#profile">Profile</a>}
             <a href="#explore">Explore</a>
             <a href="#how">How it works</a>
             <a href="#contribute">Contribute</a>
@@ -866,13 +867,9 @@ function App() {
                 <div className="badge">PROFILE</div>
                 <h2>Welcome back, {userDisplayName}.</h2>
               </div>
-              <button type="button" className="outline" onClick={() => {
-                setProfileNotice('');
-                setShowProfileModal(true);
-              }}>Edit profile</button>
             </div>
 
-            <div className="dashboard-grid">
+            <section className="profile-section" id="profile">
               <div className="profile-panel">
                 {profile.avatarUrl ? (
                   <img className="profile-avatar" src={profile.avatarUrl} alt={`${userDisplayName} profile`} />
@@ -885,8 +882,14 @@ function App() {
                   {profile.city && <p>{profile.city}</p>}
                   {profile.bio && <p>{profile.bio}</p>}
                 </div>
+                <button type="button" className="outline profile-edit-btn" onClick={() => {
+                  setProfileNotice('');
+                  setShowProfileModal(true);
+                }}>Edit profile</button>
               </div>
+            </section>
 
+            <div className="dashboard-grid">
               <div className="stats-grid">
                 {dashboardStats.map((stat) => (
                   <div key={stat.label} className="stat-box">
