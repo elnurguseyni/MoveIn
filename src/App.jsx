@@ -82,6 +82,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCountryPage, setShowCountryPage] = useState(false);
   const [showProfilePage, setShowProfilePage] = useState(false);
+  const [showAdminPage, setShowAdminPage] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showContributorModal, setShowContributorModal] = useState(false);
   const [editingContribution, setEditingContribution] = useState(null);
@@ -101,6 +102,9 @@ function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileNotice, setProfileNotice] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
+  const [adminProfiles, setAdminProfiles] = useState([]);
+  const [adminContributions, setAdminContributions] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [submissionForm, setSubmissionForm] = useState({
     name: '',
@@ -133,6 +137,7 @@ function App() {
       const view = window.location.hash;
       setShowCountryPage(view === '#explore' || view === '#profile');
       setShowProfilePage(view === '#profile');
+      setShowAdminPage(view === '#admin');
     };
 
     syncViewFromLocation();
@@ -187,7 +192,7 @@ function App() {
     const loadProfile = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('display_name, city, bio, avatar_url')
+        .select('display_name, city, bio, avatar_url, is_admin')
         .eq('id', currentUser.id)
         .maybeSingle();
 
@@ -196,7 +201,8 @@ function App() {
           displayName: data?.display_name || currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || '',
           city: data?.city || '',
           bio: data?.bio || '',
-          avatarUrl: data?.avatar_url || ''
+          avatarUrl: data?.avatar_url || '',
+          isAdmin: data?.is_admin === true
         });
       }
     };
@@ -265,6 +271,41 @@ function App() {
 
     alert(`${selectedCountry} is coming soon. Lithuania is available right now.`);
   }
+
+  function openAdminPage() {
+    window.location.hash = '#admin';
+    setShowCountryPage(true);
+    setShowAdminPage(true);
+    setShowProfilePage(false);
+  }
+
+  useEffect(() => {
+    if (!supabase || !currentUser || !profile.isAdmin) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadAdminData = async () => {
+      setAdminLoading(true);
+      const [{ data: profilesData }, { data: contributionsData }] = await Promise.all([
+        supabase.from('profiles').select('id, display_name, city, is_admin, updated_at').order('updated_at', { ascending: false }),
+        supabase.from('contributions').select('*').order('created_at', { ascending: false })
+      ]);
+
+      if (isMounted) {
+        setAdminProfiles(Array.isArray(profilesData) ? profilesData : []);
+        setAdminContributions(Array.isArray(contributionsData) ? contributionsData : []);
+        setAdminLoading(false);
+      }
+    };
+
+    loadAdminData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, profile.isAdmin]);
 
   function handleReset() {
     setSelectedCountry('Lithuania');
@@ -466,6 +507,22 @@ function App() {
     setContentItems((prev) => prev.filter((item) => item.id !== card.id));
     setSavedGuides((prev) => prev.filter((id) => id !== card.id));
     setSubmissionNotice({ type: 'success', message: 'Your post was deleted.' });
+  }
+
+  async function handleAdminDeleteContribution(row) {
+    if (!currentUser || !profile.isAdmin || !supabase || !window.confirm(`Delete "${row.title}"?`)) {
+      return;
+    }
+
+    const { error } = await supabase.from('contributions').delete().eq('id', row.id);
+    if (error) {
+      setSubmissionNotice({ type: 'error', message: `Admin deletion failed: ${error.message}` });
+      return;
+    }
+
+    setAdminContributions((prev) => prev.filter((item) => item.id !== row.id));
+    setContentItems((prev) => prev.filter((item) => item.id !== row.id));
+    setSubmissionNotice({ type: 'success', message: 'Post removed by admin.' });
   }
 
   function handleMediaUpload(event) {
@@ -801,6 +858,62 @@ function App() {
     </section>
   );
 
+  const adminPage = (
+    <section className="admin-page" aria-labelledby="admin-page-title">
+      <div className="profile-page-header">
+        <div>
+          <div className="badge">ADMIN</div>
+          <h1 id="admin-page-title">Manage MoveIn</h1>
+          <p>Review members and community contributions.</p>
+        </div>
+        <button type="button" className="outline" onClick={() => {
+          window.location.hash = '#explore';
+          setShowAdminPage(false);
+        }}>Back to Explore</button>
+      </div>
+
+      {adminLoading ? <p className="empty-state">Loading admin data...</p> : (
+        <div className="admin-grid">
+          <section className="admin-panel">
+            <div className="saved-header">
+              <h2>Users</h2>
+              <span>{adminProfiles.length}</span>
+            </div>
+            <ul className="admin-list">
+              {adminProfiles.map((adminProfile) => (
+                <li key={adminProfile.id}>
+                  <div>
+                    <strong>{adminProfile.display_name || 'Unnamed member'}</strong>
+                    <small>{adminProfile.city || 'No city added'}</small>
+                  </div>
+                  {adminProfile.is_admin && <span className="admin-label">Admin</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="admin-panel">
+            <div className="saved-header">
+              <h2>Posts</h2>
+              <span>{adminContributions.length}</span>
+            </div>
+            <ul className="admin-list">
+              {adminContributions.map((contribution) => (
+                <li key={contribution.id}>
+                  <div>
+                    <strong>{contribution.title}</strong>
+                    <small>{contribution.author} · {contribution.city}</small>
+                  </div>
+                  <button type="button" className="delete-btn" onClick={() => handleAdminDeleteContribution(contribution)}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      )}
+    </section>
+  );
+
   return !showCountryPage ? (
     <div className="landing">
       <div className="landing-card">
@@ -864,7 +977,9 @@ function App() {
             {currentUser && <button type="button" className="nav-link-btn" onClick={() => {
               window.location.hash = '#profile';
               setShowProfilePage(true);
+              setShowAdminPage(false);
             }}>Profile</button>}
+            {currentUser && profile.isAdmin && <button type="button" className="nav-link-btn" onClick={openAdminPage}>Admin</button>}
             <a href="#explore">Explore</a>
             <a href="#how">How it works</a>
             <a href="#contribute">Contribute</a>
@@ -884,7 +999,7 @@ function App() {
       </header>
 
       <main>
-      {showProfilePage ? profilePage : <>
+      {showAdminPage && profile.isAdmin ? adminPage : showProfilePage ? profilePage : <>
         {submissionNotice.message && (
           <div className={`submit-status ${submissionNotice.type}`}>
             {submissionNotice.message}

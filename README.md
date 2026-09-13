@@ -24,6 +24,8 @@ where id = 'YOUR_AUTH_USER_UUID';
 
 Do not expose admin promotion in the frontend. The database role and RLS policies are the authority for admin access.
 
+Admins see an **Admin** navigation item after signing in. The dashboard lists profiles and contributions and supports admin post deletion. Regular users cannot render the admin view or use its protected database operations.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:

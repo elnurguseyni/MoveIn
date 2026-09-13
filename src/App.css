@@ -476,6 +476,68 @@ h1 {
   line-height: 1.55;
 }
 
+.admin-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 68px 24px 70px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.admin-panel {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 20px;
+}
+
+.admin-panel h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding: 14px 0;
+}
+
+.admin-list strong,
+.admin-list small {
+  display: block;
+}
+
+.admin-list small {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.admin-label {
+  color: #1e6e35;
+  background: #ebfaef;
+  border: 1px solid #bce4c2;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .profile-avatar {
   width: 58px;
   height: 58px;
@@ -1131,6 +1193,10 @@ footer div {
   }
 
   .profile-page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-grid {
     grid-template-columns: 1fr;
   }
 
