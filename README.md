@@ -10,6 +10,28 @@ MoveIn is a React and Vite relocation community app for exploring real experienc
 
 The Supabase project must have the migration in [`supabase/migrations/20260913000000_create_contributions_and_storage.sql`](supabase/migrations/20260913000000_create_contributions_and_storage.sql) applied before using authentication, contributions, or media uploads. It creates the contributions table, the `community-media` bucket, and the related RLS policies.
 
+## Google login
+
+The login modal includes Google OAuth through Supabase. To enable it:
+
+1. Create a Web OAuth client in Google Cloud Console.
+2. In Supabase, open **Authentication → Providers → Google** and enable Google.
+3. Copy the Google client ID and client secret into the Supabase Google provider settings.
+4. In Google Cloud, add this authorized redirect URI:
+
+```text
+https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback
+```
+
+5. In Supabase, open **Authentication → URL Configuration** and add the local and deployed app URLs to the redirect allow list:
+
+```text
+http://localhost:5173
+https://YOUR_VERCEL_DOMAIN
+```
+
+The browser app uses the public Supabase key. Never put a Google client secret or Supabase service-role key in `.env.local`, Vercel frontend variables, or source code.
+
 To apply migrations with the Supabase CLI:
 
 ```bash

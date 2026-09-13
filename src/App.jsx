@@ -255,6 +255,25 @@ function App() {
     setCurrentUser(null);
   }
 
+  async function handleGoogleLogin() {
+    if (!supabase) {
+      setAuthError('Add your Supabase keys to .env.local before continuing.');
+      return;
+    }
+
+    setAuthError('');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+
+    if (error) {
+      setAuthError(error.message || 'Google login failed. Please try again.');
+    }
+  }
+
   const userDisplayName = currentUser ? (
     currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Member'
   ) : '';
@@ -570,6 +589,11 @@ function App() {
             {authLoading ? 'Please wait...' : authMode === 'login' ? 'Log in' : 'Create account'}
           </button>
         </form>
+
+        <div className="auth-divider"><span>or</span></div>
+        <button type="button" className="google-btn full-width" onClick={handleGoogleLogin}>
+          Continue with Google
+        </button>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ test('opens login from the Lithuania experience page', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
 
   await page.getByRole('button', { name: '×' }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeHidden();
