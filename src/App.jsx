@@ -91,6 +91,8 @@ function App() {
   const [hasLikedPost, setHasLikedPost] = useState(false);
   const [postComments, setPostComments] = useState([]);
   const [commentProfiles, setCommentProfiles] = useState({});
+  const [mentionProfiles, setMentionProfiles] = useState([]);
+  const [mentionQuery, setMentionQuery] = useState('');
   const [commentText, setCommentText] = useState('');
   const [commentNotice, setCommentNotice] = useState('');
   const [notifications, setNotifications] = useState([]);
@@ -378,6 +380,18 @@ function App() {
       return undefined;
     }
 
+    supabase.from('profiles').select('id, display_name, avatar_url').then(({ data }) => {
+      setMentionProfiles(data || []);
+    });
+
+    return undefined;
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!supabase || !currentUser) {
+      return undefined;
+    }
+
     let isMounted = true;
     const loadNotifications = async () => {
       const { data } = await supabase
@@ -600,10 +614,15 @@ function App() {
       return;
     }
 
+    const mentionedUserIds = mentionProfiles
+      .filter((mentionProfile) => new RegExp(`(^|\\s)@${mentionProfile.display_name?.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(body))
+      .map((mentionProfile) => mentionProfile.id);
+
     const { data, error } = await supabase.from('post_comments').insert({
       contribution_id: selectedPostId,
       user_id: currentUser.id,
-      body
+      body,
+      mentioned_user_ids: mentionedUserIds
     }).select('id, user_id, body, created_at').single();
 
     if (error) {
@@ -618,6 +637,19 @@ function App() {
     }));
     setCommentText('');
     setCommentNotice('');
+  }
+
+  function handleCommentTextChange(event) {
+    const nextText = event.target.value;
+    setCommentText(nextText);
+    const mentionMatch = nextText.match(/(?:^|\s)@([\w.-]*)$/);
+    setMentionQuery(mentionMatch ? mentionMatch[1].toLowerCase() : '');
+  }
+
+  function insertMention(mentionProfile) {
+    const mentionName = mentionProfile.display_name || 'member';
+    setCommentText((text) => text.replace(/(?:^|\s)@[\w.-]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${mentionName} `));
+    setMentionQuery('');
   }
 
   async function handleDeleteContribution(card) {
@@ -1073,7 +1105,21 @@ function App() {
           );
         }) : <p className="empty-state">Be the first to comment.</p>}
         <form className="comment-form" onSubmit={handleSubmitComment}>
-          <textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="Share a helpful thought..." rows="3" />
+          <div className="comment-input-wrap">
+            <textarea value={commentText} onChange={handleCommentTextChange} placeholder="Share a helpful thought... Use @ to mention someone." rows="3" />
+            {mentionQuery && (
+              <div className="mention-suggestions">
+                {mentionProfiles
+                  .filter((mentionProfile) => (mentionProfile.display_name || '').toLowerCase().includes(mentionQuery))
+                  .slice(0, 5)
+                  .map((mentionProfile) => (
+                    <button type="button" key={mentionProfile.id} onClick={() => insertMention(mentionProfile)}>
+                      {mentionProfile.display_name || 'Community member'}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
           <button type="submit" className="primary-btn">Post comment</button>
         </form>
         {commentNotice && <p className="submission-error">{commentNotice}</p>}

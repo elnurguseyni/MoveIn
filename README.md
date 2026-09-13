@@ -34,6 +34,8 @@ Post detail interactions require [`supabase/migrations/20260913000006_add_post_i
 
 Comment notifications require [`supabase/migrations/20260913000007_add_comment_notifications.sql`](supabase/migrations/20260913000007_add_comment_notifications.sql). It creates notifications and a database trigger that alerts the post owner when another user comments.
 
+Mentions require [`supabase/migrations/20260913000008_add_comment_mentions.sql`](supabase/migrations/20260913000008_add_comment_mentions.sql). Typing `@` in a comment shows profile suggestions, stores the selected user IDs, and sends mention notifications.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:
