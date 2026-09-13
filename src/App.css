@@ -934,6 +934,7 @@ h1 {
 }
 
 .auth-form input,
+.auth-form textarea,
 .contribution-form input,
 .contribution-form select,
 .contribution-form textarea {

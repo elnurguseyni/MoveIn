@@ -58,6 +58,10 @@ function App() {
   const [selectedMediaFile, setSelectedMediaFile] = useState(null);
   const [submissionNotice, setSubmissionNotice] = useState({ type: '', message: '' });
   const [currentUser, setCurrentUser] = useState(null);
+  const [profile, setProfile] = useState({ displayName: '', city: '', bio: '' });
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileNotice, setProfileNotice] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [submissionForm, setSubmissionForm] = useState({
     name: '',
@@ -120,6 +124,36 @@ function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!supabase || !currentUser) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadProfile = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, city, bio')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (isMounted) {
+        setProfile({
+          displayName: data?.display_name || currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || '',
+          city: data?.city || '',
+          bio: data?.bio || ''
+        });
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     if (!supabase) {
@@ -274,9 +308,36 @@ function App() {
     }
   }
 
-  const userDisplayName = currentUser ? (
-    currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Member'
-  ) : '';
+  const userDisplayName = currentUser ? (profile.displayName || currentUser.email?.split('@')[0] || 'Member') : '';
+
+  async function handleSaveProfile(event) {
+    event.preventDefault();
+    if (!supabase || !currentUser) {
+      return;
+    }
+
+    setProfileLoading(true);
+    setProfileNotice('');
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: currentUser.id,
+        display_name: profile.displayName.trim(),
+        city: profile.city.trim(),
+        bio: profile.bio.trim(),
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      setProfileNotice(error.message || 'Could not save your profile.');
+    } else {
+      setProfileNotice('Profile saved.');
+      setShowProfileModal(false);
+    }
+
+    setProfileLoading(false);
+  }
 
   function handleSaveGuide(cardId) {
     setSavedGuides((prev) => {
@@ -726,7 +787,10 @@ function App() {
                 <div className="badge">PROFILE</div>
                 <h2>Welcome back, {userDisplayName}.</h2>
               </div>
-              <button type="button" className="outline">Edit profile</button>
+              <button type="button" className="outline" onClick={() => {
+                setProfileNotice('');
+                setShowProfileModal(true);
+              }}>Edit profile</button>
             </div>
 
             <div className="dashboard-grid">
@@ -735,6 +799,8 @@ function App() {
                 <div>
                   <h3>{userDisplayName}</h3>
                   <p>{currentUser.email}</p>
+                  {profile.city && <p>{profile.city}</p>}
+                  {profile.bio && <p>{profile.bio}</p>}
                 </div>
               </div>
 
@@ -903,6 +969,50 @@ function App() {
       </footer>
 
       {loginModal}
+
+      {showProfileModal && (
+        <div className="modal-backdrop" onClick={() => setShowProfileModal(false)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit profile</h3>
+              <button type="button" className="close-btn" onClick={() => setShowProfileModal(false)}>×</button>
+            </div>
+            <form className="auth-form" onSubmit={handleSaveProfile}>
+              <label>
+                Display name
+                <input
+                  type="text"
+                  value={profile.displayName}
+                  onChange={(event) => setProfile({ ...profile, displayName: event.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                City
+                <input
+                  type="text"
+                  value={profile.city}
+                  onChange={(event) => setProfile({ ...profile, city: event.target.value })}
+                  placeholder="Vilnius"
+                />
+              </label>
+              <label>
+                Bio
+                <textarea
+                  rows="4"
+                  value={profile.bio}
+                  onChange={(event) => setProfile({ ...profile, bio: event.target.value })}
+                  placeholder="Tell the community a little about yourself."
+                />
+              </label>
+              {profileNotice && <p className="auth-error">{profileNotice}</p>}
+              <button type="submit" className="primary-btn full-width" disabled={profileLoading}>
+                {profileLoading ? 'Saving...' : 'Save profile'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showContributorModal && (
         <div className="modal-backdrop" onClick={() => setShowContributorModal(false)}>

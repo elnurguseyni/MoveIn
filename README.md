@@ -10,6 +10,8 @@ MoveIn is a React and Vite relocation community app for exploring real experienc
 
 The Supabase project must have the migration in [`supabase/migrations/20260913000000_create_contributions_and_storage.sql`](supabase/migrations/20260913000000_create_contributions_and_storage.sql) applied before using authentication, contributions, or media uploads. It creates the contributions table, the `community-media` bucket, and the related RLS policies.
 
+The profile editor requires the follow-up migration [`supabase/migrations/20260913000001_create_profiles.sql`](supabase/migrations/20260913000001_create_profiles.sql). It creates the profiles table and policies that allow users to edit only their own profile.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:
