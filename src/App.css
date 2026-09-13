@@ -234,6 +234,15 @@ nav {
   font-size: 14px;
 }
 
+.nav-link-btn {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
 .cta {
   background: #111;
   color: white;
@@ -387,6 +396,84 @@ h1 {
 
 .profile-edit-btn {
   margin-left: auto;
+}
+
+.profile-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 68px 24px 70px;
+}
+
+.profile-page-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.profile-page-header h1 {
+  margin: 16px 0 10px;
+  font-size: clamp(2.8rem, 6vw, 5rem);
+}
+
+.profile-page-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.profile-page-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr);
+  gap: 18px;
+}
+
+.profile-detail-card,
+.profile-contributions-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.profile-detail-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.profile-page-avatar {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #111;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 18px;
+}
+
+.profile-detail-card h2,
+.profile-contributions-card h2 {
+  margin: 0 0 8px;
+  letter-spacing: -0.04em;
+}
+
+.profile-detail-card p {
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.profile-detail-card .primary-btn {
+  margin-top: 16px;
+}
+
+.profile-bio {
+  line-height: 1.55;
 }
 
 .profile-avatar {
@@ -1041,6 +1128,15 @@ footer div {
 
   .navlinks {
     display: none;
+  }
+
+  .profile-page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-page-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

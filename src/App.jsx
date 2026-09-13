@@ -81,6 +81,7 @@ function App() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCountryPage, setShowCountryPage] = useState(false);
+  const [showProfilePage, setShowProfilePage] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showContributorModal, setShowContributorModal] = useState(false);
   const [editingContribution, setEditingContribution] = useState(null);
@@ -738,6 +739,62 @@ function App() {
     </div>
   );
 
+  const profilePage = (
+    <section className="profile-page" aria-labelledby="profile-page-title">
+      <div className="profile-page-header">
+        <div>
+          <div className="badge">YOUR PROFILE</div>
+          <h1 id="profile-page-title">Your MoveIn profile</h1>
+          <p>Keep your identity and community story up to date.</p>
+        </div>
+        <button type="button" className="outline" onClick={() => setProfilePage(false)}>Back to Explore</button>
+      </div>
+
+      <div className="profile-page-grid">
+        <section className="profile-detail-card">
+          {profile.avatarUrl ? (
+            <img className="profile-page-avatar" src={profile.avatarUrl} alt={`${userDisplayName} profile`} />
+          ) : (
+            <div className="profile-page-avatar profile-page-avatar-fallback">{userDisplayName.charAt(0).toUpperCase()}</div>
+          )}
+          <h2>{userDisplayName}</h2>
+          <p>{currentUser?.email}</p>
+          {profile.city && <p>{profile.city}</p>}
+          {profile.bio ? <p className="profile-bio">{profile.bio}</p> : <p className="empty-state">Add a short bio to introduce yourself.</p>}
+          <button type="button" className="primary-btn" onClick={() => {
+            setProfileNotice('');
+            setShowProfileModal(true);
+          }}>Edit profile</button>
+        </section>
+
+        <section className="profile-contributions-card">
+          <div className="saved-header">
+            <h2>Your contributions</h2>
+            <span>{myContributionCards.length} published</span>
+          </div>
+          {myContributionCards.length > 0 ? (
+            <ul className="saved-list">
+              {myContributionCards.map((card) => (
+                <li key={card.id}>
+                  <div>
+                    <strong>{card.title}</strong>
+                    <small>{card.meta}</small>
+                  </div>
+                  <div className="post-actions">
+                    <button type="button" className="edit-btn" onClick={() => handleEditContribution(card)}>Edit</button>
+                    <button type="button" className="delete-btn" onClick={() => handleDeleteContribution(card)}>Delete</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="empty-state">Your published stories will appear here.</p>
+          )}
+        </section>
+      </div>
+    </section>
+  );
+
   return !showCountryPage ? (
     <div className="landing">
       <div className="landing-card">
@@ -798,7 +855,7 @@ function App() {
         <nav>
           <div className="brand">MoveLT <span>/ Lithuania</span></div>
           <div className="navlinks">
-            {currentUser && <a href="#profile">Profile</a>}
+            {currentUser && <button type="button" className="nav-link-btn" onClick={() => setShowProfilePage(true)}>Profile</button>}
             <a href="#explore">Explore</a>
             <a href="#how">How it works</a>
             <a href="#contribute">Contribute</a>
@@ -818,6 +875,7 @@ function App() {
       </header>
 
       <main>
+      {showProfilePage ? profilePage : <>
         {submissionNotice.message && (
           <div className={`submit-status ${submissionNotice.type}`}>
             {submissionNotice.message}
@@ -868,26 +926,6 @@ function App() {
                 <h2>Welcome back, {userDisplayName}.</h2>
               </div>
             </div>
-
-            <section className="profile-section" id="profile">
-              <div className="profile-panel">
-                {profile.avatarUrl ? (
-                  <img className="profile-avatar" src={profile.avatarUrl} alt={`${userDisplayName} profile`} />
-                ) : (
-                  <div className="profile-avatar">{userDisplayName.charAt(0).toUpperCase()}</div>
-                )}
-                <div>
-                  <h3>{userDisplayName}</h3>
-                  <p>{currentUser.email}</p>
-                  {profile.city && <p>{profile.city}</p>}
-                  {profile.bio && <p>{profile.bio}</p>}
-                </div>
-                <button type="button" className="outline profile-edit-btn" onClick={() => {
-                  setProfileNotice('');
-                  setShowProfileModal(true);
-                }}>Edit profile</button>
-              </div>
-            </section>
 
             <div className="dashboard-grid">
               <div className="stats-grid">
@@ -1045,6 +1083,7 @@ function App() {
             <button type="button" className="outline" onClick={() => setShowContributorModal(true)}>Become a contributor</button>
           </div>
         </section>
+        </>}
       </main>
 
       <footer id="how">
