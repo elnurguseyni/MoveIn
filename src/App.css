@@ -421,6 +421,33 @@ nav {
   cursor: pointer;
 }
 
+.notification-nav-btn {
+  position: relative;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 5px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.notification-count {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 17px;
+  height: 17px;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: #c93131;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 13px;
+  text-align: center;
+}
+
 .cta {
   background: #111;
   color: white;

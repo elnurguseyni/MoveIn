@@ -146,7 +146,7 @@ function App() {
   useEffect(() => {
     const syncViewFromLocation = () => {
       const view = window.location.hash;
-      setShowCountryPage(view === '#explore' || view === '#profile' || view === '#admin' || view.startsWith('#post/'));
+      setShowCountryPage(view === '#explore' || view === '#profile' || view === '#admin' || view === '#notifications' || view.startsWith('#post/'));
       setShowProfilePage(view === '#profile');
       setShowAdminPage(view === '#admin');
       setShowNotificationsPage(view === '#notifications');
@@ -1246,12 +1246,17 @@ function App() {
               setShowAdminPage(false);
             }}>Profile</button>}
             {currentUser && profile.isAdmin && <button type="button" className="nav-link-btn" onClick={openAdminPage}>Admin</button>}
-            {currentUser && <button type="button" className="nav-link-btn" onClick={() => {
+            {currentUser && <button type="button" className="notification-nav-btn" aria-label="Notifications" title="Notifications" onClick={() => {
               window.location.hash = '#notifications';
               setShowNotificationsPage(true);
               setShowProfilePage(false);
               setShowAdminPage(false);
-            }}>Notifications{notifications.some((notification) => !notification.read_at) ? ` (${notifications.filter((notification) => !notification.read_at).length})` : ''}</button>}
+            }}>
+              <span aria-hidden="true">🔔</span>
+              {notifications.some((notification) => !notification.read_at) && (
+                <span className="notification-count">{notifications.filter((notification) => !notification.read_at).length}</span>
+              )}
+            </button>}
             <a href="#explore">Explore</a>
             <a href="#how">How it works</a>
             <a href="#contribute">Contribute</a>
