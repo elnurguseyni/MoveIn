@@ -247,13 +247,14 @@ function App() {
 
   const filteredCards = useMemo(() => {
     return contentItems.filter((card) => {
-      const isVisible = card.status === 'approved' || card.createdBy === currentUser?.id || profile.isAdmin;
+      const isVisible = card.status === 'approved'
+        || (card.status === 'pending' && card.createdBy === currentUser?.id);
       const matchesFilter = activeFilter === 'all' || card.type === activeFilter;
       const searchText = `${card.search ?? ''} ${card.title ?? ''} ${card.meta ?? ''} ${card.quote ?? ''} ${card.author ?? ''} ${card.role ?? ''}`.toLowerCase();
       const matchesQuery = !searchQuery || searchText.includes(searchQuery.toLowerCase());
       return isVisible && matchesFilter && matchesQuery;
     });
-  }, [activeFilter, contentItems, currentUser, profile.isAdmin, searchQuery]);
+  }, [activeFilter, contentItems, currentUser, searchQuery]);
 
   const myContributionCards = useMemo(() => {
     if (!currentUser) {
