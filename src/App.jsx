@@ -512,6 +512,68 @@ function App() {
     }
   }
 
+  const loginModal = showLoginModal && (
+    <div className="modal-backdrop" onClick={() => setShowLoginModal(false)}>
+      <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{authMode === 'login' ? 'Welcome back' : 'Create your account'}</h3>
+          <button type="button" className="close-btn" onClick={() => setShowLoginModal(false)}>×</button>
+        </div>
+
+        <div className="auth-mode-toggle" role="tablist" aria-label="Authentication mode">
+          <button
+            type="button"
+            className={authMode === 'login' ? 'mode-btn active' : 'mode-btn'}
+            onClick={() => setAuthMode('login')}
+          >
+            Log in
+          </button>
+          <button
+            type="button"
+            className={authMode === 'signup' ? 'mode-btn active' : 'mode-btn'}
+            onClick={() => setAuthMode('signup')}
+          >
+            Sign up
+          </button>
+        </div>
+
+        {!supabase && (
+          <p className="auth-warning">
+            Supabase is not configured yet. Add your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY values to a .env.local file.
+          </p>
+        )}
+
+        {authError && <p className="auth-error">{authError}</p>}
+
+        <form className="auth-form" onSubmit={handleLogin}>
+          <label>
+            Email
+            <input
+              type="email"
+              value={loginForm.email}
+              onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
+              placeholder="you@example.com"
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              value={loginForm.password}
+              onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
+              placeholder="••••••••"
+              required
+            />
+          </label>
+          <button type="submit" className="primary-btn full-width" disabled={authLoading}>
+            {authLoading ? 'Please wait...' : authMode === 'login' ? 'Log in' : 'Create account'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+
   return !showCountryPage ? (
     <div className="landing">
       <div className="landing-card">
@@ -564,67 +626,7 @@ function App() {
         </div>
       </div>
 
-      {showLoginModal && (
-        <div className="modal-backdrop" onClick={() => setShowLoginModal(false)}>
-          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{authMode === 'login' ? 'Welcome back' : 'Create your account'}</h3>
-              <button type="button" className="close-btn" onClick={() => setShowLoginModal(false)}>×</button>
-            </div>
-
-            <div className="auth-mode-toggle" role="tablist" aria-label="Authentication mode">
-              <button
-                type="button"
-                className={authMode === 'login' ? 'mode-btn active' : 'mode-btn'}
-                onClick={() => setAuthMode('login')}
-              >
-                Log in
-              </button>
-              <button
-                type="button"
-                className={authMode === 'signup' ? 'mode-btn active' : 'mode-btn'}
-                onClick={() => setAuthMode('signup')}
-              >
-                Sign up
-              </button>
-            </div>
-
-            {!supabase && (
-              <p className="auth-warning">
-                Supabase is not configured yet. Add your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY values to a .env.local file.
-              </p>
-            )}
-
-            {authError && <p className="auth-error">{authError}</p>}
-
-            <form className="auth-form" onSubmit={handleLogin}>
-              <label>
-                Email
-                <input
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
-                  placeholder="you@example.com"
-                  required
-                />
-              </label>
-              <label>
-                Password
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
-                  placeholder="••••••••"
-                  required
-                />
-              </label>
-              <button type="submit" className="primary-btn full-width" disabled={authLoading}>
-                {authLoading ? 'Please wait...' : authMode === 'login' ? 'Log in' : 'Create account'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      {loginModal}
     </div>
   ) : (
     <div className="page-shell">
@@ -875,6 +877,8 @@ function App() {
           <span>No agency listings in the community feed.</span>
         </div>
       </footer>
+
+      {loginModal}
 
       {showContributorModal && (
         <div className="modal-backdrop" onClick={() => setShowContributorModal(false)}>
