@@ -36,6 +36,8 @@ Comment notifications require [`supabase/migrations/20260913000007_add_comment_n
 
 Mentions require [`supabase/migrations/20260913000008_add_comment_mentions.sql`](supabase/migrations/20260913000008_add_comment_mentions.sql). Typing `@` in a comment shows profile suggestions, stores the selected user IDs, and sends mention notifications.
 
+Apply [`supabase/migrations/20260913000009_improve_mention_notifications.sql`](supabase/migrations/20260913000009_improve_mention_notifications.sql) to update the notification text so admins receive messages such as “Someone tagged you in a comment on: ...”.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:
