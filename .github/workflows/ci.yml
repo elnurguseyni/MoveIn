@@ -40,3 +40,12 @@ jobs:
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_ANON_KEY: ci-placeholder-key
         run: npm run test:e2e
+
+      - name: Run authenticated contribution test
+        if: ${{ secrets.TEST_SUPABASE_URL != '' && secrets.TEST_SUPABASE_ANON_KEY != '' && secrets.TEST_USER_EMAIL != '' && secrets.TEST_USER_PASSWORD != '' }}
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+        run: npm run test:e2e:auth

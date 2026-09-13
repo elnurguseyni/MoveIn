@@ -32,6 +32,8 @@ npm run test:e2e
 
 The browser smoke test is stored in [`tests/onboarding.spec.js`](tests/onboarding.spec.js). It verifies that the Lithuania experience page opens the login modal from the in-app header. Playwright starts a temporary Vite server automatically when the test runs.
 
+The authenticated CRUD test is stored in [`tests/authenticated-contribution.spec.js`](tests/authenticated-contribution.spec.js). It creates and deletes a test contribution, but runs only when a separate test Supabase project and test user are configured through `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_USER_EMAIL`, and `TEST_USER_PASSWORD`. Do not use production credentials for this test.
+
 The CI workflow is stored in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs linting, the production build, and browser tests on pushes and pull requests targeting `main`.
 
 ## Project structure
