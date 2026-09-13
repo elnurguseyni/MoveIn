@@ -14,6 +14,16 @@ The profile editor requires the follow-up migration [`supabase/migrations/202609
 
 Profile pictures require [`supabase/migrations/20260913000002_add_profile_avatars.sql`](supabase/migrations/20260913000002_add_profile_avatars.sql), which adds `avatar_url`, creates the `profile-avatars` bucket, and restricts uploads to each user’s own folder. The profile editor uses `react-easy-crop` to crop and zoom the image in the browser before uploading a square JPEG.
 
+Admin access requires [`supabase/migrations/20260913000003_add_admin_role.sql`](supabase/migrations/20260913000003_add_admin_role.sql). After applying it, promote the first administrator manually in Supabase SQL Editor:
+
+```sql
+update public.profiles
+set is_admin = true
+where id = 'YOUR_AUTH_USER_UUID';
+```
+
+Do not expose admin promotion in the frontend. The database role and RLS policies are the authority for admin access.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:
