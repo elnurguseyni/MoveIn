@@ -28,6 +28,8 @@ Admins see an **Admin** navigation item after signing in. The dashboard lists pr
 
 Apply [`supabase/migrations/20260913000004_sync_auth_users_to_profiles.sql`](supabase/migrations/20260913000004_sync_auth_users_to_profiles.sql) to keep authentication users and profiles synchronized. It backfills existing users and automatically creates a profile row when a new user signs up.
 
+Moderation requires [`supabase/migrations/20260913000005_add_contribution_moderation.sql`](supabase/migrations/20260913000005_add_contribution_moderation.sql). Existing posts are marked `approved`; new posts are `pending` until an admin approves them. Authors can see their own pending posts, while public Explore shows approved posts only.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:

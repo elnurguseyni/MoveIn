@@ -55,13 +55,15 @@ const normalizeCard = (card, fallbackId = '') => {
     quote: card.quote ?? 'Helpful local guidance.',
     author: card.author ?? 'Community member',
     role: card.role ?? 'community member',
-    rating: card.rating ?? '★ 5.0'
+    rating: card.rating ?? '★ 5.0',
+    status: card.status ?? 'approved'
   };
 };
 
 const mapContributionToCard = (row) => normalizeCard({
   id: row.id,
   createdBy: row.created_by,
+  status: row.status,
   type: row.category,
   tag: `${(row.category || 'community').toUpperCase()} · ${row.source === 'video' ? 'VIDEO' : 'GUIDE'}`,
   title: row.title,
@@ -245,12 +247,13 @@ function App() {
 
   const filteredCards = useMemo(() => {
     return contentItems.filter((card) => {
+      const isVisible = card.status === 'approved' || card.createdBy === currentUser?.id || profile.isAdmin;
       const matchesFilter = activeFilter === 'all' || card.type === activeFilter;
       const searchText = `${card.search ?? ''} ${card.title ?? ''} ${card.meta ?? ''} ${card.quote ?? ''} ${card.author ?? ''} ${card.role ?? ''}`.toLowerCase();
       const matchesQuery = !searchQuery || searchText.includes(searchQuery.toLowerCase());
-      return matchesFilter && matchesQuery;
+      return isVisible && matchesFilter && matchesQuery;
     });
-  }, [activeFilter, contentItems, searchQuery]);
+  }, [activeFilter, contentItems, currentUser, profile.isAdmin, searchQuery]);
 
   const myContributionCards = useMemo(() => {
     if (!currentUser) {
@@ -525,6 +528,30 @@ function App() {
     setSubmissionNotice({ type: 'success', message: 'Post removed by admin.' });
   }
 
+  async function handleModerateContribution(row, status) {
+    if (!currentUser || !profile.isAdmin || !supabase) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('contributions')
+      .update({ status })
+      .eq('id', row.id);
+
+    if (error) {
+      setSubmissionNotice({ type: 'error', message: `Moderation failed: ${error.message}` });
+      return;
+    }
+
+    setAdminContributions((prev) => prev.map((item) => (
+      item.id === row.id ? { ...item, status } : item
+    )));
+    setContentItems((prev) => prev.map((item) => (
+      item.id === row.id ? { ...item, status } : item
+    )));
+    setSubmissionNotice({ type: 'success', message: `Post marked ${status}.` });
+  }
+
   function handleMediaUpload(event) {
     const file = event.target.files?.[0];
     if (!file) {
@@ -667,6 +694,7 @@ function App() {
             category: newContribution.category,
             details: newContribution.details,
             source: newContribution.source,
+            status: 'pending',
             rating: newContribution.rating,
             quote: `“${newContribution.details}”`,
             meta: hasVideo ? `${newContribution.city} · video story · ${newContribution.videoName}` : `${newContribution.city} · community guide`,
@@ -841,7 +869,7 @@ function App() {
                 <li key={card.id}>
                   <div>
                     <strong>{card.title}</strong>
-                    <small>{card.meta}</small>
+                    <small>{card.meta} · {card.status}</small>
                   </div>
                   <div className="post-actions">
                     <button type="button" className="edit-btn" onClick={() => handleEditContribution(card)}>Edit</button>
@@ -902,9 +930,17 @@ function App() {
                 <li key={contribution.id}>
                   <div>
                     <strong>{contribution.title}</strong>
-                    <small>{contribution.author} · {contribution.city}</small>
+                    <small>{contribution.author} · {contribution.city} · {contribution.status}</small>
                   </div>
-                  <button type="button" className="delete-btn" onClick={() => handleAdminDeleteContribution(contribution)}>Delete</button>
+                  <div className="post-actions">
+                    {contribution.status !== 'approved' && (
+                      <button type="button" className="edit-btn" onClick={() => handleModerateContribution(contribution, 'approved')}>Approve</button>
+                    )}
+                    {contribution.status !== 'hidden' && (
+                      <button type="button" className="edit-btn" onClick={() => handleModerateContribution(contribution, 'hidden')}>Hide</button>
+                    )}
+                    <button type="button" className="delete-btn" onClick={() => handleAdminDeleteContribution(contribution)}>Delete</button>
+                  </div>
                 </li>
               ))}
             </ul>
