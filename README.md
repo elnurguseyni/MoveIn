@@ -26,6 +26,8 @@ Do not expose admin promotion in the frontend. The database role and RLS policie
 
 Admins see an **Admin** navigation item after signing in. The dashboard lists profiles and contributions and supports admin post deletion. Regular users cannot render the admin view or use its protected database operations.
 
+Apply [`supabase/migrations/20260913000004_sync_auth_users_to_profiles.sql`](supabase/migrations/20260913000004_sync_auth_users_to_profiles.sql) to keep authentication users and profiles synchronized. It backfills existing users and automatically creates a profile row when a new user signs up.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:
