@@ -30,6 +30,8 @@ Apply [`supabase/migrations/20260913000004_sync_auth_users_to_profiles.sql`](sup
 
 Moderation requires [`supabase/migrations/20260913000005_add_contribution_moderation.sql`](supabase/migrations/20260913000005_add_contribution_moderation.sql). Existing posts are marked `approved`; new posts are `pending` until an admin approves them. Authors can see their own pending posts, while public Explore shows approved posts only.
 
+Post detail interactions require [`supabase/migrations/20260913000006_add_post_interactions.sql`](supabase/migrations/20260913000006_add_post_interactions.sql). It creates likes and comments tables with RLS. Users can favorite posts locally, but must be signed in to like or comment.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:

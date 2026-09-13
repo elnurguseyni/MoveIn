@@ -85,6 +85,12 @@ function App() {
   const [showCountryPage, setShowCountryPage] = useState(false);
   const [showProfilePage, setShowProfilePage] = useState(false);
   const [showAdminPage, setShowAdminPage] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [postLikeCount, setPostLikeCount] = useState(0);
+  const [hasLikedPost, setHasLikedPost] = useState(false);
+  const [postComments, setPostComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentNotice, setCommentNotice] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showContributorModal, setShowContributorModal] = useState(false);
   const [editingContribution, setEditingContribution] = useState(null);
@@ -137,15 +143,20 @@ function App() {
   useEffect(() => {
     const syncViewFromLocation = () => {
       const view = window.location.hash;
-      setShowCountryPage(view === '#explore' || view === '#profile' || view === '#admin');
+      setShowCountryPage(view === '#explore' || view === '#profile' || view === '#admin' || view.startsWith('#post/'));
       setShowProfilePage(view === '#profile');
       setShowAdminPage(view === '#admin');
+      setSelectedPostId(view.startsWith('#post/') ? decodeURIComponent(view.slice(6)) : null);
     };
 
     syncViewFromLocation();
     window.addEventListener('hashchange', syncViewFromLocation);
+    window.addEventListener('popstate', syncViewFromLocation);
 
-    return () => window.removeEventListener('hashchange', syncViewFromLocation);
+    return () => {
+      window.removeEventListener('hashchange', syncViewFromLocation);
+      window.removeEventListener('popstate', syncViewFromLocation);
+    };
   }, []);
 
   useEffect(() => {
@@ -264,6 +275,8 @@ function App() {
     return contentItems.filter((card) => card.createdBy === currentUser.id);
   }, [contentItems, currentUser]);
 
+  const selectedPost = contentItems.find((card) => String(card.id) === String(selectedPostId));
+
   const continueLabel = selectedCountry === 'Lithuania' ? 'Explore Lithuania' : 'Continue';
 
   function handleContinue() {
@@ -281,6 +294,14 @@ function App() {
     setShowCountryPage(true);
     setShowAdminPage(true);
     setShowProfilePage(false);
+  }
+
+  function openPostPage(cardId) {
+    window.history.pushState({}, '', `#post/${encodeURIComponent(cardId)}`);
+    setShowCountryPage(true);
+    setShowProfilePage(false);
+    setShowAdminPage(false);
+    setSelectedPostId(String(cardId));
   }
 
   useEffect(() => {
@@ -310,6 +331,33 @@ function App() {
       isMounted = false;
     };
   }, [currentUser, profile.isAdmin]);
+
+  useEffect(() => {
+    if (!supabase || !selectedPostId) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadInteractions = async () => {
+      const [{ data: likes }, { data: comments }] = await Promise.all([
+        supabase.from('post_likes').select('user_id').eq('contribution_id', selectedPostId),
+        supabase.from('post_comments').select('id, user_id, body, created_at').eq('contribution_id', selectedPostId).order('created_at', { ascending: true })
+      ]);
+
+      if (isMounted) {
+        setPostLikeCount(likes?.length || 0);
+        setHasLikedPost(Boolean(currentUser && likes?.some((like) => like.user_id === currentUser.id)));
+        setPostComments(comments || []);
+      }
+    };
+
+    loadInteractions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, selectedPostId]);
 
   function handleReset() {
     setSelectedCountry('Lithuania');
@@ -475,6 +523,63 @@ function App() {
 
       return [...prev, cardId];
     });
+  }
+
+  async function handleToggleLike() {
+    if (!currentUser || !supabase || !selectedPostId) {
+      setCommentNotice('Please log in to like posts.');
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (hasLikedPost) {
+      const { error } = await supabase.from('post_likes').delete()
+        .eq('contribution_id', selectedPostId).eq('user_id', currentUser.id);
+      if (!error) {
+        setHasLikedPost(false);
+        setPostLikeCount((count) => Math.max(0, count - 1));
+      }
+      return;
+    }
+
+    const { error } = await supabase.from('post_likes').insert({
+      contribution_id: selectedPostId,
+      user_id: currentUser.id
+    });
+    if (!error) {
+      setHasLikedPost(true);
+      setPostLikeCount((count) => count + 1);
+    }
+  }
+
+  async function handleSubmitComment(event) {
+    event.preventDefault();
+    if (!currentUser || !supabase || !selectedPostId) {
+      setCommentNotice('Please log in to comment.');
+      setShowLoginModal(true);
+      return;
+    }
+
+    const body = commentText.trim();
+    if (!body) {
+      setCommentNotice('Write a comment before posting.');
+      return;
+    }
+
+    const { data, error } = await supabase.from('post_comments').insert({
+      contribution_id: selectedPostId,
+      user_id: currentUser.id,
+      body
+    }).select('id, user_id, body, created_at').single();
+
+    if (error) {
+      setCommentNotice(error.message || 'Could not add comment.');
+      return;
+    }
+
+    setPostComments((comments) => [...comments, data]);
+    setCommentText('');
+    setCommentNotice('');
   }
 
   async function handleDeleteContribution(card) {
@@ -887,6 +992,54 @@ function App() {
     </section>
   );
 
+  const postPage = selectedPost ? (
+    <section className="post-page" aria-labelledby="post-page-title">
+      <button type="button" className="back-link" onClick={() => window.history.back()}>← Back</button>
+      <div className="post-detail">
+        <div className="post-detail-media">
+          {selectedPost.videoUrl ? (
+            selectedPost.mediaType === 'video'
+              ? <video src={selectedPost.videoUrl} controls playsInline />
+              : <img src={selectedPost.videoUrl} alt={selectedPost.title} />
+          ) : <div className="post-detail-placeholder">MoveIn story</div>}
+        </div>
+        <div className="post-detail-content">
+          <div className="badge">{selectedPost.tag}</div>
+          <h1 id="post-page-title">{selectedPost.title}</h1>
+          <div className="meta">{selectedPost.meta}</div>
+          <p className="post-detail-quote">{selectedPost.quote}</p>
+          <div className="post-detail-author">
+            <div className="avatar">{selectedPost.author.charAt(0)}</div>
+            <div><strong>{selectedPost.author}</strong><small>{selectedPost.role}</small></div>
+          </div>
+          <div className="post-actions detail-actions">
+            <button type="button" className={savedGuides.includes(String(selectedPost.id)) ? 'save-btn saved' : 'save-btn'} onClick={() => handleSaveGuide(String(selectedPost.id))}>
+              {savedGuides.includes(String(selectedPost.id)) ? 'Favorited' : 'Add to favorites'}
+            </button>
+            <button type="button" className={hasLikedPost ? 'like-btn liked' : 'like-btn'} onClick={handleToggleLike}>
+              {hasLikedPost ? 'Liked' : 'Like'} · {postLikeCount}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section className="comments-panel">
+        <h2>Comments</h2>
+        {postComments.length > 0 ? postComments.map((comment) => (
+          <div className="comment" key={comment.id}>
+            <strong>{comment.user_id === currentUser?.id ? userDisplayName : 'Community member'}</strong>
+            <p>{comment.body}</p>
+          </div>
+        )) : <p className="empty-state">Be the first to comment.</p>}
+        <form className="comment-form" onSubmit={handleSubmitComment}>
+          <textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="Share a helpful thought..." rows="3" />
+          <button type="submit" className="primary-btn">Post comment</button>
+        </form>
+        {commentNotice && <p className="submission-error">{commentNotice}</p>}
+      </section>
+    </section>
+  ) : <section className="post-page"><p className="empty-state">This post could not be found.</p></section>;
+
   const adminPage = (
     <section className="admin-page" aria-labelledby="admin-page-title">
       <div className="profile-page-header">
@@ -1036,7 +1189,7 @@ function App() {
       </header>
 
       <main>
-      {showAdminPage && profile.isAdmin ? adminPage : showProfilePage ? profilePage : <>
+      {selectedPostId ? postPage : showAdminPage && profile.isAdmin ? adminPage : showProfilePage ? profilePage : <>
         {submissionNotice.message && (
           <div className={`submit-status ${submissionNotice.type}`}>
             {submissionNotice.message}
@@ -1106,7 +1259,7 @@ function App() {
               const isSaved = savedGuides.includes(cardId);
 
               return (
-                <article key={cardId} className="card" data-type={card.type}>
+                <article key={cardId} className="card" data-type={card.type} onClick={() => openPostPage(cardId)}>
                   <div className="thumb">
                     <div className="tag">{card.tag}</div>
                     {card.videoUrl ? (
@@ -1122,7 +1275,7 @@ function App() {
                   <div className="cardbody">
                     <div className="card-top-row">
                       <h3>{card.title}</h3>
-                      <button type="button" className={isSaved ? 'save-btn saved' : 'save-btn'} onClick={() => handleSaveGuide(cardId)}>
+                      <button type="button" className={isSaved ? 'save-btn saved' : 'save-btn'} onClick={(event) => { event.stopPropagation(); handleSaveGuide(cardId); }}>
                         {isSaved ? 'Saved' : 'Save'}
                       </button>
                     </div>
