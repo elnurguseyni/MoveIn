@@ -12,7 +12,7 @@ The Supabase project must have the migration in [`supabase/migrations/2026091300
 
 The profile editor requires the follow-up migration [`supabase/migrations/20260913000001_create_profiles.sql`](supabase/migrations/20260913000001_create_profiles.sql). It creates the profiles table and policies that allow users to edit only their own profile.
 
-Profile pictures require [`supabase/migrations/20260913000002_add_profile_avatars.sql`](supabase/migrations/20260913000002_add_profile_avatars.sql), which adds `avatar_url`, creates the `profile-avatars` bucket, and restricts uploads to each user’s own folder.
+Profile pictures require [`supabase/migrations/20260913000002_add_profile_avatars.sql`](supabase/migrations/20260913000002_add_profile_avatars.sql), which adds `avatar_url`, creates the `profile-avatars` bucket, and restricts uploads to each user’s own folder. The profile editor uses `react-easy-crop` to crop and zoom the image in the browser before uploading a square JPEG.
 
 ## Google login
 

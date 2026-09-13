@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import Cropper from 'react-easy-crop';
 import { cardsData, countryOptions, pathOptions } from './data/content';
 import { supabase } from './lib/supabase';
 import './App.css';
@@ -10,6 +11,38 @@ const STORAGE_KEYS = {
 };
 
 const STORAGE_BUCKET = 'community-media';
+
+function createCroppedImage(imageSrc, pixelCrop) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = pixelCrop.width;
+      canvas.height = pixelCrop.height;
+      const context = canvas.getContext('2d');
+      context.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        pixelCrop.width,
+        pixelCrop.height
+      );
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Could not prepare the cropped image.'));
+        }
+      }, 'image/jpeg', 0.9);
+    };
+    image.onerror = reject;
+    image.src = imageSrc;
+  });
+}
 
 const normalizeCard = (card, fallbackId = '') => {
   const cardId = card.id ?? `${card.title ?? 'guide'}-${card.author ?? 'member'}-${fallbackId}`;
@@ -60,6 +93,10 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [profile, setProfile] = useState({ displayName: '', city: '', bio: '' });
   const [profileAvatarFile, setProfileAvatarFile] = useState(null);
+  const [profileAvatarPreview, setProfileAvatarPreview] = useState('');
+  const [profileCrop, setProfileCrop] = useState({ x: 0, y: 0 });
+  const [profileZoom, setProfileZoom] = useState(1);
+  const [profileCroppedAreaPixels, setProfileCroppedAreaPixels] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileNotice, setProfileNotice] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
@@ -323,11 +360,13 @@ function App() {
 
     let avatarUrl = profile.avatarUrl || '';
 
-    if (profileAvatarFile) {
-      const filePath = `${currentUser.id}/avatar-${Date.now()}.${profileAvatarFile.name.split('.').pop()}`;
+    if (profileAvatarFile && profileAvatarPreview && profileCroppedAreaPixels) {
+      const croppedBlob = await createCroppedImage(profileAvatarPreview, profileCroppedAreaPixels);
+      const croppedFile = new File([croppedBlob], 'profile-avatar.jpg', { type: 'image/jpeg' });
+      const filePath = `${currentUser.id}/avatar-${Date.now()}.jpg`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('profile-avatars')
-        .upload(filePath, profileAvatarFile, { upsert: false, cacheControl: '3600' });
+        .upload(filePath, croppedFile, { upsert: false, cacheControl: '3600', contentType: 'image/jpeg' });
 
       if (uploadError) {
         setProfileNotice(uploadError.message || 'Could not upload your profile picture.');
@@ -354,11 +393,29 @@ function App() {
     } else {
       setProfile({ ...profile, avatarUrl });
       setProfileAvatarFile(null);
+      setProfileAvatarPreview('');
       setProfileNotice('Profile saved.');
       setShowProfileModal(false);
     }
 
     setProfileLoading(false);
+  }
+
+  function handleProfileAvatarChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (profileAvatarPreview) {
+      URL.revokeObjectURL(profileAvatarPreview);
+    }
+
+    setProfileAvatarFile(file);
+    setProfileAvatarPreview(URL.createObjectURL(file));
+    setProfileCrop({ x: 0, y: 0 });
+    setProfileZoom(1);
+    setProfileCroppedAreaPixels(null);
   }
 
   function handleSaveGuide(cardId) {
@@ -1018,10 +1075,38 @@ function App() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(event) => setProfileAvatarFile(event.target.files?.[0] || null)}
+                  onChange={handleProfileAvatarChange}
                 />
                 {profileAvatarFile && <span className="file-name">Selected: {profileAvatarFile.name}</span>}
               </label>
+              {profileAvatarPreview && (
+                <div className="avatar-editor">
+                  <div className="avatar-cropper">
+                    <Cropper
+                      image={profileAvatarPreview}
+                      crop={profileCrop}
+                      zoom={profileZoom}
+                      aspect={1}
+                      cropShape="round"
+                      showGrid={false}
+                      onCropChange={setProfileCrop}
+                      onZoomChange={setProfileZoom}
+                      onCropComplete={(_area, areaPixels) => setProfileCroppedAreaPixels(areaPixels)}
+                    />
+                  </div>
+                  <label className="zoom-control">
+                    Zoom
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="0.1"
+                      value={profileZoom}
+                      onChange={(event) => setProfileZoom(Number(event.target.value))}
+                    />
+                  </label>
+                </div>
+              )}
               <label>
                 City
                 <input

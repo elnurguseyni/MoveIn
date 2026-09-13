@@ -959,6 +959,28 @@ h1 {
   font-weight: 700;
 }
 
+.avatar-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.avatar-cropper {
+  position: relative;
+  height: 280px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #222;
+}
+
+.zoom-control {
+  gap: 8px;
+}
+
+.zoom-control input {
+  padding: 0;
+}
+
 .submission-error {
   margin: 0;
   color: #8a1e1e;
