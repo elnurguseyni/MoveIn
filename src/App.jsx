@@ -59,6 +59,7 @@ function App() {
   const [submissionNotice, setSubmissionNotice] = useState({ type: '', message: '' });
   const [currentUser, setCurrentUser] = useState(null);
   const [profile, setProfile] = useState({ displayName: '', city: '', bio: '' });
+  const [profileAvatarFile, setProfileAvatarFile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileNotice, setProfileNotice] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
@@ -135,7 +136,7 @@ function App() {
     const loadProfile = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('display_name, city, bio')
+        .select('display_name, city, bio, avatar_url')
         .eq('id', currentUser.id)
         .maybeSingle();
 
@@ -143,7 +144,8 @@ function App() {
         setProfile({
           displayName: data?.display_name || currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || '',
           city: data?.city || '',
-          bio: data?.bio || ''
+          bio: data?.bio || '',
+          avatarUrl: data?.avatar_url || ''
         });
       }
     };
@@ -319,6 +321,23 @@ function App() {
     setProfileLoading(true);
     setProfileNotice('');
 
+    let avatarUrl = profile.avatarUrl || '';
+
+    if (profileAvatarFile) {
+      const filePath = `${currentUser.id}/avatar-${Date.now()}.${profileAvatarFile.name.split('.').pop()}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('profile-avatars')
+        .upload(filePath, profileAvatarFile, { upsert: false, cacheControl: '3600' });
+
+      if (uploadError) {
+        setProfileNotice(uploadError.message || 'Could not upload your profile picture.');
+        setProfileLoading(false);
+        return;
+      }
+
+      avatarUrl = supabase.storage.from('profile-avatars').getPublicUrl(uploadData.path).data.publicUrl;
+    }
+
     const { error } = await supabase
       .from('profiles')
       .upsert({
@@ -326,12 +345,15 @@ function App() {
         display_name: profile.displayName.trim(),
         city: profile.city.trim(),
         bio: profile.bio.trim(),
+        avatar_url: avatarUrl,
         updated_at: new Date().toISOString()
       });
 
     if (error) {
       setProfileNotice(error.message || 'Could not save your profile.');
     } else {
+      setProfile({ ...profile, avatarUrl });
+      setProfileAvatarFile(null);
       setProfileNotice('Profile saved.');
       setShowProfileModal(false);
     }
@@ -795,7 +817,11 @@ function App() {
 
             <div className="dashboard-grid">
               <div className="profile-panel">
-                <div className="profile-avatar">{userDisplayName.charAt(0).toUpperCase()}</div>
+                {profile.avatarUrl ? (
+                  <img className="profile-avatar" src={profile.avatarUrl} alt={`${userDisplayName} profile`} />
+                ) : (
+                  <div className="profile-avatar">{userDisplayName.charAt(0).toUpperCase()}</div>
+                )}
                 <div>
                   <h3>{userDisplayName}</h3>
                   <p>{currentUser.email}</p>
@@ -986,6 +1012,15 @@ function App() {
                   onChange={(event) => setProfile({ ...profile, displayName: event.target.value })}
                   required
                 />
+              </label>
+              <label>
+                Profile picture
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => setProfileAvatarFile(event.target.files?.[0] || null)}
+                />
+                {profileAvatarFile && <span className="file-name">Selected: {profileAvatarFile.name}</span>}
               </label>
               <label>
                 City

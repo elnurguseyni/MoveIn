@@ -392,6 +392,7 @@ h1 {
   place-items: center;
   font-size: 1.5rem;
   font-weight: 800;
+  object-fit: cover;
 }
 
 .profile-panel h3 {
