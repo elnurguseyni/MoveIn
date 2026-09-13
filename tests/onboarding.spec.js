@@ -14,6 +14,16 @@ test('opens login from the Lithuania experience page', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeHidden();
 });
 
+test('restores the onboarding page with browser back navigation', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByRole('button', { name: 'Explore Lithuania' }).click();
+  await expect(page).toHaveURL(/#explore$/);
+
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'Explore Lithuania' })).toBeVisible();
+});
+
 test('requires login before submitting a contribution', async ({ page }) => {
   await page.goto('/');
 

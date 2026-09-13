@@ -129,6 +129,19 @@ function App() {
   }, [savedGuides]);
 
   useEffect(() => {
+    const syncViewFromLocation = () => {
+      const view = window.location.hash;
+      setShowCountryPage(view === '#explore' || view === '#profile');
+      setShowProfilePage(view === '#profile');
+    };
+
+    syncViewFromLocation();
+    window.addEventListener('hashchange', syncViewFromLocation);
+
+    return () => window.removeEventListener('hashchange', syncViewFromLocation);
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (submissionForm.videoUrl) {
         URL.revokeObjectURL(submissionForm.videoUrl);
@@ -233,11 +246,6 @@ function App() {
     });
   }, [activeFilter, contentItems, searchQuery]);
 
-  const savedGuideCards = useMemo(() => contentItems.filter((card) => {
-    const cardId = card.id ?? `${card.title}-${card.author}`;
-    return savedGuides.includes(cardId);
-  }), [contentItems, savedGuides]);
-
   const myContributionCards = useMemo(() => {
     if (!currentUser) {
       return [];
@@ -248,14 +256,9 @@ function App() {
 
   const continueLabel = selectedCountry === 'Lithuania' ? 'Explore Lithuania' : 'Continue';
 
-  const dashboardStats = [
-    { label: 'Saved guides', value: String(savedGuideCards.length) },
-    { label: 'Documents ready', value: '2' },
-    { label: 'Community notes', value: String(contentItems.length) },
-  ];
-
   function handleContinue() {
     if (selectedCountry === 'Lithuania') {
+      window.location.hash = '#explore';
       setShowCountryPage(true);
       return;
     }
@@ -747,7 +750,10 @@ function App() {
           <h1 id="profile-page-title">Your MoveIn profile</h1>
           <p>Keep your identity and community story up to date.</p>
         </div>
-        <button type="button" className="outline" onClick={() => setProfilePage(false)}>Back to Explore</button>
+        <button type="button" className="outline" onClick={() => {
+          window.location.hash = '#explore';
+          setShowProfilePage(false);
+        }}>Back to Explore</button>
       </div>
 
       <div className="profile-page-grid">
@@ -855,7 +861,10 @@ function App() {
         <nav>
           <div className="brand">MoveLT <span>/ Lithuania</span></div>
           <div className="navlinks">
-            {currentUser && <button type="button" className="nav-link-btn" onClick={() => setShowProfilePage(true)}>Profile</button>}
+            {currentUser && <button type="button" className="nav-link-btn" onClick={() => {
+              window.location.hash = '#profile';
+              setShowProfilePage(true);
+            }}>Profile</button>}
             <a href="#explore">Explore</a>
             <a href="#how">How it works</a>
             <a href="#contribute">Contribute</a>
@@ -917,96 +926,6 @@ function App() {
             <div className="video-placeholder" role="button" tabIndex={0} onClick={() => alert('Prototype: this would open the full resident video.')}>▶</div>
           </div>
         </section>
-
-        {currentUser && (
-          <section className="dashboard-shell">
-            <div className="dashboard-header">
-              <div>
-                <div className="badge">PROFILE</div>
-                <h2>Welcome back, {userDisplayName}.</h2>
-              </div>
-            </div>
-
-            <div className="dashboard-grid">
-              <div className="stats-grid">
-                {dashboardStats.map((stat) => (
-                  <div key={stat.label} className="stat-box">
-                    <strong>{stat.value}</strong>
-                    <span>{stat.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="next-steps">
-              <div className="next-card">
-                <span className="mini-label">Next step</span>
-                <h3>Set up your move checklist</h3>
-                <p>Review housing, registration, and bank setup in one place.</p>
-              </div>
-              <div className="next-card">
-                <span className="mini-label">Community</span>
-                <h3>Save 3 useful guides</h3>
-                <p>Keep the most helpful local stories close to your plan.</p>
-              </div>
-            </div>
-
-            <div className="saved-panel">
-              <div className="saved-header">
-                <h3>Saved guides</h3>
-                <span>{savedGuideCards.length} saved</span>
-              </div>
-
-              {savedGuideCards.length > 0 ? (
-                <ul className="saved-list">
-                  {savedGuideCards.map((card) => (
-                    <li key={card.id ?? `${card.title}-${card.author}`}>
-                      <div>
-                        <strong>{card.title}</strong>
-                        <small>{card.meta}</small>
-                      </div>
-                      <button type="button" className="save-btn saved" onClick={() => handleSaveGuide(card.id ?? `${card.title}-${card.author}`)}>
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="empty-state">No saved guides yet. Tap Save on any card to keep it here.</p>
-              )}
-            </div>
-
-            <div className="saved-panel">
-              <div className="saved-header">
-                <h3>Your contributions</h3>
-                <span>{myContributionCards.length} published</span>
-              </div>
-
-              {myContributionCards.length > 0 ? (
-                <ul className="saved-list">
-                  {myContributionCards.map((card) => (
-                    <li key={card.id}>
-                      <div>
-                        <strong>{card.title}</strong>
-                        <small>{card.meta}</small>
-                      </div>
-                      <div className="post-actions">
-                        <button type="button" className="edit-btn" onClick={() => handleEditContribution(card)}>
-                          Edit
-                        </button>
-                        <button type="button" className="delete-btn" onClick={() => handleDeleteContribution(card)}>
-                          Delete
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="empty-state">Your published stories will appear here.</p>
-              )}
-            </div>
-          </section>
-        )}
 
         <section className="section" id="explore">
           <div className="section-head">
