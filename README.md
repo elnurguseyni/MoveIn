@@ -27,9 +27,12 @@ Run the same checks used by GitHub Actions:
 ```bash
 npm run lint
 npm run build
+npm run test:e2e
 ```
 
-The CI workflow is stored in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs on pushes and pull requests targeting `main`.
+The browser smoke test is stored in [`tests/onboarding.spec.js`](tests/onboarding.spec.js). It verifies that the Lithuania experience page opens the login modal from the in-app header. Playwright starts a temporary Vite server automatically when the test runs.
+
+The CI workflow is stored in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs linting, the production build, and browser tests on pushes and pull requests targeting `main`.
 
 ## Project structure
 
