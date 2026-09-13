@@ -135,7 +135,7 @@ function App() {
   useEffect(() => {
     const syncViewFromLocation = () => {
       const view = window.location.hash;
-      setShowCountryPage(view === '#explore' || view === '#profile');
+      setShowCountryPage(view === '#explore' || view === '#profile' || view === '#admin');
       setShowProfilePage(view === '#profile');
       setShowAdminPage(view === '#admin');
     };
