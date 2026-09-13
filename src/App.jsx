@@ -361,7 +361,7 @@ function App() {
         if (userIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, display_name, avatar_url')
+            .select('id, display_name, avatar_url, is_admin')
             .in('id', userIds);
           setCommentProfiles(Object.fromEntries((profiles || []).map((commentProfile) => [commentProfile.id, commentProfile])));
         }
@@ -380,7 +380,7 @@ function App() {
       return undefined;
     }
 
-    supabase.from('profiles').select('id, display_name, avatar_url').then(({ data }) => {
+    supabase.from('profiles').select('id, display_name, avatar_url, is_admin').then(({ data }) => {
       setMentionProfiles(data || []);
     });
 
@@ -615,7 +615,10 @@ function App() {
     }
 
     const mentionedUserIds = mentionProfiles
-      .filter((mentionProfile) => new RegExp(`(^|\\s)@${mentionProfile.display_name?.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(body))
+          .filter((mentionProfile) => {
+            const mentionName = mentionProfile.is_admin ? 'Admin' : mentionProfile.display_name;
+            return new RegExp(`(^|\\s)@${mentionName?.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}(?=\\s|$)`, 'i').test(body);
+          })
       .map((mentionProfile) => mentionProfile.id);
 
     const { data, error } = await supabase.from('post_comments').insert({
@@ -647,7 +650,7 @@ function App() {
   }
 
   function insertMention(mentionProfile) {
-    const mentionName = mentionProfile.display_name || 'member';
+    const mentionName = mentionProfile.is_admin ? 'Admin' : mentionProfile.display_name || 'member';
     setCommentText((text) => text.replace(/(?:^|\s)@[\w.-]*$/, (match) => `${match.startsWith(' ') ? ' ' : ''}@${mentionName} `));
     setMentionQuery('');
   }
@@ -1110,11 +1113,11 @@ function App() {
             {mentionQuery && (
               <div className="mention-suggestions">
                 {mentionProfiles
-                  .filter((mentionProfile) => (mentionProfile.display_name || '').toLowerCase().includes(mentionQuery))
+                  .filter((mentionProfile) => (mentionProfile.is_admin ? 'admin' : mentionProfile.display_name || '').toLowerCase().includes(mentionQuery))
                   .slice(0, 5)
                   .map((mentionProfile) => (
                     <button type="button" key={mentionProfile.id} onClick={() => insertMention(mentionProfile)}>
-                      {mentionProfile.display_name || 'Community member'}
+                      @{mentionProfile.is_admin ? 'Admin' : mentionProfile.display_name || 'Community member'}
                     </button>
                   ))}
               </div>
