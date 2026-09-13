@@ -1,0 +1,970 @@
+import { useEffect, useMemo, useState } from 'react';
+import { cardsData, countryOptions, pathOptions } from './data/content';
+import { supabase } from './lib/supabase';
+import './App.css';
+
+const STORAGE_KEYS = {
+  user: 'movein-user',
+  submissions: 'movein-submissions',
+  savedGuides: 'movein-saved-guides'
+};
+
+const STORAGE_BUCKET = 'community-media';
+
+const normalizeCard = (card, fallbackId = '') => {
+  const cardId = card.id ?? `${card.title ?? 'guide'}-${card.author ?? 'member'}-${fallbackId}`;
+  return {
+    ...card,
+    id: cardId,
+    tag: card.tag ?? 'COMMUNITY · GUIDE',
+    title: card.title ?? 'Untitled guide',
+    meta: card.meta ?? 'Community guide',
+    quote: card.quote ?? 'Helpful local guidance.',
+    author: card.author ?? 'Community member',
+    role: card.role ?? 'community member',
+    rating: card.rating ?? '★ 5.0'
+  };
+};
+
+const mapContributionToCard = (row) => normalizeCard({
+  id: row.id,
+  createdBy: row.created_by,
+  type: row.category,
+  tag: `${(row.category || 'community').toUpperCase()} · ${row.source === 'video' ? 'VIDEO' : 'GUIDE'}`,
+  title: row.title,
+  meta: row.meta || `${row.city || 'Vilnius'} · community guide`,
+  quote: row.quote || `“${row.details || 'Helpful local guidance.'}”`,
+  author: row.author || 'Community member',
+  role: row.created_by ? 'verified contributor' : 'community member',
+  rating: row.rating || '★ 5.0',
+  search: `${row.city || 'vilnius'} ${row.category || 'community'} ${row.title || 'experience'}`,
+  videoUrl: row.media_url || row.video_url || null,
+  mediaType: row.media_type || (row.media_url ? (row.media_url.match(/\.(mp4|mov|webm|ogg|m4v)$/i) ? 'video' : 'image') : 'video')
+}, row.id);
+
+function App() {
+  const [selectedCountry, setSelectedCountry] = useState('Lithuania');
+  const [selectedPath, setSelectedPath] = useState('Student');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showCountryPage, setShowCountryPage] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showContributorModal, setShowContributorModal] = useState(false);
+  const [editingContribution, setEditingContribution] = useState(null);
+  const [authMode, setAuthMode] = useState('login');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [selectedMediaFile, setSelectedMediaFile] = useState(null);
+  const [submissionNotice, setSubmissionNotice] = useState({ type: '', message: '' });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [submissionForm, setSubmissionForm] = useState({
+    name: '',
+    title: '',
+    city: '',
+    category: 'housing',
+    details: '',
+    videoName: '',
+    videoUrl: ''
+  });
+  const [contentItems, setContentItems] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEYS.submissions);
+    return stored ? JSON.parse(stored).map((card) => normalizeCard(card)) : cardsData.map((card) => normalizeCard(card));
+  });
+  const [savedGuides, setSavedGuides] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEYS.savedGuides);
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.submissions, JSON.stringify(contentItems));
+  }, [contentItems]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.savedGuides, JSON.stringify(savedGuides));
+  }, [savedGuides]);
+
+  useEffect(() => {
+    return () => {
+      if (submissionForm.videoUrl) {
+        URL.revokeObjectURL(submissionForm.videoUrl);
+      }
+    };
+  }, [submissionForm.videoUrl]);
+
+  useEffect(() => {
+    if (!supabase) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const syncSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (isMounted) {
+        setCurrentUser(session?.user ?? null);
+      }
+    };
+
+    syncSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        setCurrentUser(session?.user ?? null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadContributions = async () => {
+      const { data, error } = await supabase
+        .from('contributions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (isMounted && !error && Array.isArray(data)) {
+        const dbCards = data.map((row) => mapContributionToCard(row));
+        setContentItems((prev) => {
+          const merged = [...dbCards, ...prev.filter((card) => !dbCards.some((item) => item.id === card.id))];
+          return merged.map((card) => normalizeCard(card));
+        });
+      }
+    };
+
+    loadContributions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredCards = useMemo(() => {
+    return contentItems.filter((card) => {
+      const matchesFilter = activeFilter === 'all' || card.type === activeFilter;
+      const searchText = `${card.search ?? ''} ${card.title ?? ''} ${card.meta ?? ''} ${card.quote ?? ''} ${card.author ?? ''} ${card.role ?? ''}`.toLowerCase();
+      const matchesQuery = !searchQuery || searchText.includes(searchQuery.toLowerCase());
+      return matchesFilter && matchesQuery;
+    });
+  }, [activeFilter, contentItems, searchQuery]);
+
+  const savedGuideCards = useMemo(() => contentItems.filter((card) => {
+    const cardId = card.id ?? `${card.title}-${card.author}`;
+    return savedGuides.includes(cardId);
+  }), [contentItems, savedGuides]);
+
+  const myContributionCards = useMemo(() => {
+    if (!currentUser) {
+      return [];
+    }
+
+    return contentItems.filter((card) => card.createdBy === currentUser.id);
+  }, [contentItems, currentUser]);
+
+  const continueLabel = selectedCountry === 'Lithuania' ? 'Explore Lithuania' : 'Continue';
+
+  const dashboardStats = [
+    { label: 'Saved guides', value: String(savedGuideCards.length) },
+    { label: 'Documents ready', value: '2' },
+    { label: 'Community notes', value: String(contentItems.length) },
+  ];
+
+  function handleContinue() {
+    if (selectedCountry === 'Lithuania') {
+      setShowCountryPage(true);
+      return;
+    }
+
+    alert(`${selectedCountry} is coming soon. Lithuania is available right now.`);
+  }
+
+  function handleReset() {
+    setSelectedCountry('Lithuania');
+    setSelectedPath('Student');
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+
+    if (!supabase) {
+      setAuthError('Add your Supabase keys to .env.local before continuing.');
+      return;
+    }
+
+    const email = loginForm.email.trim();
+    const password = loginForm.password.trim();
+
+    if (!email || !password) {
+      setAuthError('Please enter both email and password.');
+      return;
+    }
+
+    setAuthError('');
+    setAuthLoading(true);
+
+    try {
+      if (authMode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        setAuthMode('login');
+        setAuthError('Check your email to confirm your account, then sign in.');
+        setLoginForm({ email: '', password: '' });
+        return;
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        throw error;
+      }
+
+      setShowLoginModal(false);
+      setLoginForm({ email: '', password: '' });
+      setAuthError('');
+    } catch (error) {
+      setAuthError(error.message || 'Authentication failed. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    if (!supabase) {
+      return;
+    }
+
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+  }
+
+  const userDisplayName = currentUser ? (
+    currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Member'
+  ) : '';
+
+  function handleSaveGuide(cardId) {
+    setSavedGuides((prev) => {
+      if (prev.includes(cardId)) {
+        return prev.filter((id) => id !== cardId);
+      }
+
+      return [...prev, cardId];
+    });
+  }
+
+  async function handleDeleteContribution(card) {
+    if (!currentUser || !supabase || !window.confirm(`Delete "${card.title}"?`)) {
+      return;
+    }
+
+    setSubmissionNotice({ type: '', message: '' });
+
+    const { error } = await supabase
+      .from('contributions')
+      .delete()
+      .eq('id', card.id)
+      .eq('created_by', currentUser.id);
+
+    if (error) {
+      setSubmissionNotice({
+        type: 'error',
+        message: `Could not delete your post: ${error.message}`
+      });
+      return;
+    }
+
+    if (card.videoUrl) {
+      const storageMarker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+      const storageIndex = card.videoUrl.indexOf(storageMarker);
+
+      if (storageIndex !== -1) {
+        const storagePath = decodeURIComponent(card.videoUrl.slice(storageIndex + storageMarker.length));
+        await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+      }
+    }
+
+    setContentItems((prev) => prev.filter((item) => item.id !== card.id));
+    setSavedGuides((prev) => prev.filter((id) => id !== card.id));
+    setSubmissionNotice({ type: 'success', message: 'Your post was deleted.' });
+  }
+
+  function handleMediaUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setSelectedMediaFile(null);
+      setSubmissionForm((prev) => ({ ...prev, videoName: '', videoUrl: '' }));
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setSelectedMediaFile(file);
+    setSubmissionForm((prev) => ({
+      ...prev,
+      videoName: file.name,
+      videoUrl: objectUrl
+    }));
+  }
+
+  function handleEditContribution(card) {
+    setEditingContribution(card);
+    setSubmissionNotice({ type: '', message: '' });
+    setSubmissionForm({
+      name: card.author,
+      title: card.title,
+      city: card.meta?.split(' · ')[0] || 'Vilnius',
+      category: card.type || 'community',
+      details: card.quote?.replace(/^“|”$/g, '') || '',
+      videoName: '',
+      videoUrl: ''
+    });
+    setShowContributorModal(true);
+  }
+
+  async function handleSubmitContribution(event) {
+    event.preventDefault();
+    setSubmissionNotice({ type: '', message: '' });
+
+    if (supabase && !currentUser) {
+      setSubmissionNotice({
+        type: 'error',
+        message: 'Please log in before submitting a contribution.'
+      });
+      setShowContributorModal(false);
+      setShowLoginModal(true);
+      return;
+    }
+
+    const authorName = submissionForm.name || userDisplayName || 'Community member';
+    const hasVideo = Boolean(submissionForm.videoName);
+    const newContribution = {
+      type: submissionForm.category,
+      category: submissionForm.category,
+      tag: hasVideo ? 'VIDEO · STORY' : `${submissionForm.category.toUpperCase()} · GUIDE`,
+      title: submissionForm.title || 'New contributor story',
+      city: submissionForm.city || 'Vilnius',
+      details: submissionForm.details || 'Here is my honest experience from living here.',
+      author: authorName,
+      role: currentUser ? 'verified contributor' : 'community member',
+      rating: '★ 5.0',
+      search: `${submissionForm.city || 'vilnius'} ${submissionForm.category || 'community'} ${submissionForm.title || 'experience'}`,
+      videoName: submissionForm.videoName,
+      source: hasVideo ? 'video' : 'guide'
+    };
+
+    try {
+      if (editingContribution && supabase) {
+        const { data, error } = await supabase
+          .from('contributions')
+          .update({
+            author: authorName,
+            title: newContribution.title,
+            city: newContribution.city,
+            category: newContribution.category,
+            details: newContribution.details,
+            quote: `“${newContribution.details}”`,
+            meta: `${newContribution.city} · community guide`
+          })
+          .eq('id', editingContribution.id)
+          .eq('created_by', currentUser.id)
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        const updatedRow = data?.[0];
+        const updatedCard = normalizeCard({
+          ...editingContribution,
+          ...(updatedRow ? mapContributionToCard(updatedRow) : {}),
+          id: editingContribution.id,
+          createdBy: currentUser.id,
+          type: newContribution.category,
+          tag: editingContribution.tag,
+          title: newContribution.title,
+          meta: `${newContribution.city} · community guide`,
+          quote: `“${newContribution.details}”`,
+          author: authorName,
+          search: `${newContribution.city} ${newContribution.category} ${newContribution.title}`
+        });
+
+        setContentItems((prev) => prev.map((card) => (
+          card.id === updatedCard.id ? updatedCard : card
+        )));
+
+        setSubmissionNotice({ type: 'success', message: 'Your post was updated.' });
+        setEditingContribution(null);
+        setShowContributorModal(false);
+        return;
+      }
+
+      let mediaUrl = null;
+      let mediaType = null;
+
+      if (supabase) {
+        setIsUploadingMedia(true);
+      }
+
+      if (selectedMediaFile && supabase) {
+        const file = selectedMediaFile;
+        const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .upload(`user-posts/${currentUser.id}/${fileName}`, file, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const publicUrlData = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(uploadData.path);
+        mediaUrl = publicUrlData.data.publicUrl;
+        mediaType = file.type.startsWith('video') ? 'video' : 'image';
+      }
+
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('contributions')
+          .insert([{
+            author: authorName,
+            title: newContribution.title,
+            city: newContribution.city,
+            category: newContribution.category,
+            details: newContribution.details,
+            source: newContribution.source,
+            rating: newContribution.rating,
+            quote: `“${newContribution.details}”`,
+            meta: hasVideo ? `${newContribution.city} · video story · ${newContribution.videoName}` : `${newContribution.city} · community guide`,
+            media_url: mediaUrl,
+            media_type: mediaType,
+            created_by: currentUser?.id ?? null
+          }])
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data[0]) {
+          const insertedCard = mapContributionToCard(data[0]);
+          setContentItems((prev) => [insertedCard, ...prev.filter((card) => card.id !== insertedCard.id)]);
+        }
+      } else {
+        const localCard = normalizeCard({
+          type: newContribution.type,
+          tag: newContribution.tag,
+          title: newContribution.title,
+          meta: `${newContribution.city} · community guide`,
+          quote: `“${newContribution.details}”`,
+          author: newContribution.author,
+          role: newContribution.role,
+          rating: newContribution.rating,
+          search: newContribution.search,
+          videoUrl: submissionForm.videoUrl,
+          mediaType: submissionForm.videoUrl ? 'video' : 'image'
+        }, `local-${Date.now()}`);
+
+        setContentItems((prev) => [localCard, ...prev]);
+      }
+
+      setSubmissionNotice({
+        type: 'success',
+        message: 'Your post was uploaded successfully.'
+      });
+      setShowContributorModal(false);
+      setSubmissionForm({
+        name: '',
+        title: '',
+        city: '',
+        category: 'housing',
+        details: '',
+        videoName: '',
+        videoUrl: ''
+      });
+      setSelectedMediaFile(null);
+      setEditingContribution(null);
+    } catch (error) {
+      const errorMessage = error?.message || '';
+      const isStorageError = errorMessage.includes('storage') || errorMessage.includes('bucket');
+      setSubmissionNotice({
+        type: 'error',
+        message: isStorageError
+          ? `Media upload failed: ${errorMessage}. Check the community-media storage INSERT policy.`
+          : `Post creation failed: ${errorMessage || 'check the contributions table INSERT policy.'}`
+      });
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  }
+
+  return !showCountryPage ? (
+    <div className="landing">
+      <div className="landing-card">
+        <div className="landing-topbar">
+          <div className="eyebrow">MoveIn</div>
+          <button type="button" className="ghost-btn inline-btn" onClick={() => setShowLoginModal(true)}>
+            {currentUser ? `Hi, ${userDisplayName}` : 'Log in'}
+          </button>
+        </div>
+        <h1>Start your next chapter.</h1>
+        <p>Choose the country you want to explore and the path that fits your move.</p>
+
+        <div className="selector-block">
+          <div className="selector-label">Choose a country</div>
+          <div className="country-grid">
+            {countryOptions.map((country) => (
+              <button
+                key={country}
+                type="button"
+                className={`choice ${selectedCountry === country ? 'selected' : ''}`}
+                onClick={() => setSelectedCountry(country)}
+              >
+                {country}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="selector-block">
+          <div className="selector-label">What brings you?</div>
+          <div className="path-grid">
+            {pathOptions.map((path) => (
+              <button
+                key={path}
+                type="button"
+                className={`choice ${selectedPath === path ? 'selected' : ''}`}
+                onClick={() => setSelectedPath(path)}
+              >
+                {path}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="landing-actions">
+          <button type="button" className="ghost-btn" onClick={handleReset}>Reset</button>
+          <button type="button" className="primary-btn" onClick={handleContinue}>
+            {continueLabel}
+          </button>
+        </div>
+      </div>
+
+      {showLoginModal && (
+        <div className="modal-backdrop" onClick={() => setShowLoginModal(false)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{authMode === 'login' ? 'Welcome back' : 'Create your account'}</h3>
+              <button type="button" className="close-btn" onClick={() => setShowLoginModal(false)}>×</button>
+            </div>
+
+            <div className="auth-mode-toggle" role="tablist" aria-label="Authentication mode">
+              <button
+                type="button"
+                className={authMode === 'login' ? 'mode-btn active' : 'mode-btn'}
+                onClick={() => setAuthMode('login')}
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                className={authMode === 'signup' ? 'mode-btn active' : 'mode-btn'}
+                onClick={() => setAuthMode('signup')}
+              >
+                Sign up
+              </button>
+            </div>
+
+            {!supabase && (
+              <p className="auth-warning">
+                Supabase is not configured yet. Add your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY values to a .env.local file.
+              </p>
+            )}
+
+            {authError && <p className="auth-error">{authError}</p>}
+
+            <form className="auth-form" onSubmit={handleLogin}>
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={loginForm.email}
+                  onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
+                  placeholder="you@example.com"
+                  required
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
+                  placeholder="••••••••"
+                  required
+                />
+              </label>
+              <button type="submit" className="primary-btn full-width" disabled={authLoading}>
+                {authLoading ? 'Please wait...' : authMode === 'login' ? 'Log in' : 'Create account'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : (
+    <div className="page-shell">
+      <header className="top">
+        <nav>
+          <div className="brand">MoveLT <span>/ Lithuania</span></div>
+          <div className="navlinks">
+            <a href="#explore">Explore</a>
+            <a href="#how">How it works</a>
+            <a href="#contribute">Contribute</a>
+          </div>
+          <div className="nav-actions">
+            {currentUser ? (
+              <>
+                <span className="user-badge">Hi, {userDisplayName}</span>
+                <button type="button" className="ghost-btn inline-btn" onClick={handleLogout}>Log out</button>
+              </>
+            ) : (
+              <button type="button" className="ghost-btn inline-btn" onClick={() => setShowLoginModal(true)}>Log in</button>
+            )}
+            <a className="cta" href="#contribute">Share your experience</a>
+          </div>
+        </nav>
+      </header>
+
+      <main>
+        {submissionNotice.message && (
+          <div className={`submit-status ${submissionNotice.type}`}>
+            {submissionNotice.message}
+          </div>
+        )}
+
+        <section className="hero">
+          <div>
+            <div className="badge">🇱🇹 Built from real experiences</div>
+            <h1>See Lithuania through people who actually live here.</h1>
+            <p>
+              Honest dorm tours, university life, neighborhoods, language clubs,
+              commuting tips and the little things nobody puts in an official guide.
+            </p>
+            <div className="search">
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                placeholder="Try “VU dorms”, “Naujamiestis”, “language clubs”..."
+                aria-label="Search experiences"
+              />
+              <button type="button" onClick={() => document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' })}>
+                Explore
+              </button>
+            </div>
+          </div>
+
+          <div className="hero-card">
+            <div>
+              <div className="badge">🎥 Resident video</div>
+              <h3>“What my VU dorm actually looks like”</h3>
+              <p>Shot by a current student. No agency photos. No sponsored script.</p>
+            </div>
+            <div className="video-placeholder" role="button" tabIndex={0} onClick={() => alert('Prototype: this would open the full resident video.')}>▶</div>
+          </div>
+        </section>
+
+        {currentUser && (
+          <section className="dashboard-shell">
+            <div className="dashboard-header">
+              <div>
+                <div className="badge">PROFILE</div>
+                <h2>Welcome back, {userDisplayName}.</h2>
+              </div>
+              <button type="button" className="outline">Edit profile</button>
+            </div>
+
+            <div className="dashboard-grid">
+              <div className="profile-panel">
+                <div className="profile-avatar">{userDisplayName.charAt(0).toUpperCase()}</div>
+                <div>
+                  <h3>{userDisplayName}</h3>
+                  <p>{currentUser.email}</p>
+                </div>
+              </div>
+
+              <div className="stats-grid">
+                {dashboardStats.map((stat) => (
+                  <div key={stat.label} className="stat-box">
+                    <strong>{stat.value}</strong>
+                    <span>{stat.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="next-steps">
+              <div className="next-card">
+                <span className="mini-label">Next step</span>
+                <h3>Set up your move checklist</h3>
+                <p>Review housing, registration, and bank setup in one place.</p>
+              </div>
+              <div className="next-card">
+                <span className="mini-label">Community</span>
+                <h3>Save 3 useful guides</h3>
+                <p>Keep the most helpful local stories close to your plan.</p>
+              </div>
+            </div>
+
+            <div className="saved-panel">
+              <div className="saved-header">
+                <h3>Saved guides</h3>
+                <span>{savedGuideCards.length} saved</span>
+              </div>
+
+              {savedGuideCards.length > 0 ? (
+                <ul className="saved-list">
+                  {savedGuideCards.map((card) => (
+                    <li key={card.id ?? `${card.title}-${card.author}`}>
+                      <div>
+                        <strong>{card.title}</strong>
+                        <small>{card.meta}</small>
+                      </div>
+                      <button type="button" className="save-btn saved" onClick={() => handleSaveGuide(card.id ?? `${card.title}-${card.author}`)}>
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="empty-state">No saved guides yet. Tap Save on any card to keep it here.</p>
+              )}
+            </div>
+
+            <div className="saved-panel">
+              <div className="saved-header">
+                <h3>Your contributions</h3>
+                <span>{myContributionCards.length} published</span>
+              </div>
+
+              {myContributionCards.length > 0 ? (
+                <ul className="saved-list">
+                  {myContributionCards.map((card) => (
+                    <li key={card.id}>
+                      <div>
+                        <strong>{card.title}</strong>
+                        <small>{card.meta}</small>
+                      </div>
+                      <div className="post-actions">
+                        <button type="button" className="edit-btn" onClick={() => handleEditContribution(card)}>
+                          Edit
+                        </button>
+                        <button type="button" className="delete-btn" onClick={() => handleDeleteContribution(card)}>
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="empty-state">Your published stories will appear here.</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        <section className="section" id="explore">
+          <div className="section-head">
+            <div>
+              <h2>Explore real life</h2>
+              <div className="section-sub">A starting set of community-made guides.</div>
+            </div>
+          </div>
+
+          <div className="filter-row" aria-label="Content filters">
+            {['all', 'housing', 'university', 'neighborhood', 'community'].map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                className={`pill ${activeFilter === filter ? 'active' : ''}`}
+                onClick={() => setActiveFilter(filter)}
+              >
+                {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid" id="cards" aria-live="polite">
+            {filteredCards.map((card) => {
+              const cardId = card.id ?? `${card.title}-${card.author}`;
+              const isSaved = savedGuides.includes(cardId);
+
+              return (
+                <article key={cardId} className="card" data-type={card.type}>
+                  <div className="thumb">
+                    <div className="tag">{card.tag}</div>
+                    {card.videoUrl ? (
+                      card.mediaType === 'video' ? (
+                        <video className="thumb-media" src={card.videoUrl} controls playsInline muted />
+                      ) : (
+                        <img className="thumb-media" src={card.videoUrl} alt={card.title} />
+                      )
+                    ) : (
+                      <div className="play">▶</div>
+                    )}
+                  </div>
+                  <div className="cardbody">
+                    <div className="card-top-row">
+                      <h3>{card.title}</h3>
+                      <button type="button" className={isSaved ? 'save-btn saved' : 'save-btn'} onClick={() => handleSaveGuide(cardId)}>
+                        {isSaved ? 'Saved' : 'Save'}
+                      </button>
+                    </div>
+                    <div className="meta">{card.meta}</div>
+                    <div className="quote">{card.quote}</div>
+                    <div className="person">
+                      <div className="avatar">{card.author.charAt(0)}</div>
+                      <div>
+                        <b>{card.author}</b>
+                        <br />
+                        <span>{card.role}</span>
+                      </div>
+                      <div className="rating">{card.rating}</div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="callout" id="contribute">
+            <div>
+              <h3>You already know something a newcomer needs.</h3>
+              <p>
+                Share a short video, photo walkthrough or honest guide. Your
+                experience becomes someone else’s shortcut.
+              </p>
+            </div>
+            <button type="button" className="outline" onClick={() => setShowContributorModal(true)}>Become a contributor</button>
+          </div>
+        </section>
+      </main>
+
+      <footer id="how">
+        <div>
+          <span>MoveLT prototype · community-first relocation</span>
+          <span>No agency listings in the community feed.</span>
+        </div>
+      </footer>
+
+      {showContributorModal && (
+        <div className="modal-backdrop" onClick={() => setShowContributorModal(false)}>
+          <div className="modal-card large" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingContribution ? 'Edit your experience' : 'Share your experience'}</h3>
+              <button type="button" className="close-btn" onClick={() => setShowContributorModal(false)}>×</button>
+            </div>
+            <form className="contribution-form" onSubmit={handleSubmitContribution}>
+              <div className="input-grid">
+                <label>
+                  Your name
+                  <input
+                    type="text"
+                    value={submissionForm.name}
+                    onChange={(event) => setSubmissionForm({ ...submissionForm, name: event.target.value })}
+                    placeholder="Jane Doe"
+                  />
+                </label>
+                <label>
+                  City
+                  <input
+                    type="text"
+                    value={submissionForm.city}
+                    onChange={(event) => setSubmissionForm({ ...submissionForm, city: event.target.value })}
+                    placeholder="Vilnius"
+                  />
+                </label>
+              </div>
+
+              <label>
+                Story title
+                <input
+                  type="text"
+                  value={submissionForm.title}
+                  onChange={(event) => setSubmissionForm({ ...submissionForm, title: event.target.value })}
+                  placeholder="What I wish I knew before moving"
+                  required
+                />
+              </label>
+
+              <label>
+                Category
+                <select
+                  value={submissionForm.category}
+                  onChange={(event) => setSubmissionForm({ ...submissionForm, category: event.target.value })}
+                >
+                  <option value="housing">Housing</option>
+                  <option value="university">University</option>
+                  <option value="neighborhood">Neighborhood</option>
+                  <option value="community">Community</option>
+                </select>
+              </label>
+
+              <label>
+                Upload a video or photo
+                <input
+                  type="file"
+                  accept="video/*,image/*"
+                  onChange={handleMediaUpload}
+                  disabled={Boolean(editingContribution)}
+                />
+                {submissionForm.videoName && <span className="file-name">Selected: {submissionForm.videoName}</span>}
+                {editingContribution && <span className="file-name">Media stays unchanged when editing.</span>}
+              </label>
+
+              <label>
+                Tell us your experience
+                <textarea
+                  rows="5"
+                  value={submissionForm.details}
+                  onChange={(event) => setSubmissionForm({ ...submissionForm, details: event.target.value })}
+                  placeholder="Share something helpful for someone moving here..."
+                  required
+                />
+              </label>
+
+              {submissionNotice.message && submissionNotice.type === 'error' && (
+                <p className="submission-error">{submissionNotice.message}</p>
+              )}
+
+              <button type="submit" className="primary-btn full-width" disabled={isUploadingMedia}>
+                {isUploadingMedia ? 'Uploading...' : editingContribution ? 'Save changes' : 'Submit contribution'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;

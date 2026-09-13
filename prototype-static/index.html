@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MoveLT — See Lithuania Through People Who Live Here</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="landingScreen" class="landing" aria-live="polite">
+      <div class="landing-card">
+        <div class="eyebrow">MoveIn</div>
+        <h1>Start your next chapter.</h1>
+        <p>Choose the country you want to explore and the path that fits your move.</p>
+
+        <div class="selector-block">
+          <div class="selector-label">Choose a country</div>
+          <div class="country-grid">
+            <button class="choice selected" data-country="Lithuania" type="button">Lithuania</button>
+            <button class="choice" data-country="Poland" type="button">Poland</button>
+            <button class="choice" data-country="Germany" type="button">Germany</button>
+            <button class="choice" data-country="Spain" type="button">Spain</button>
+          </div>
+        </div>
+
+        <div class="selector-block">
+          <div class="selector-label">What brings you?</div>
+          <div class="path-grid">
+            <button class="choice selected" data-path="Student" type="button">Student</button>
+            <button class="choice" data-path="Worker" type="button">Worker</button>
+            <button class="choice" data-path="Moving In" type="button">Moving In</button>
+            <button class="choice" data-path="Remote Work" type="button">Remote Work</button>
+          </div>
+        </div>
+
+        <div class="landing-actions">
+          <button class="ghost-btn" type="button" id="resetSelection">Reset</button>
+          <button class="primary-btn" type="button" id="continueBtn">Explore Lithuania</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pageShell" class="page-shell">
+      <header class="top">
+        <nav>
+          <div class="brand">MoveLT <span>/ Lithuania</span></div>
+          <div class="navlinks">
+            <a href="#explore">Explore</a>
+            <a href="#how">How it works</a>
+            <a href="#contribute">Contribute</a>
+          </div>
+          <a class="cta" href="#contribute">Share your experience</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div>
+            <div class="badge">🇱🇹 Built from real experiences</div>
+            <h1>See Lithuania through people who actually live here.</h1>
+            <p>
+              Honest dorm tours, university life, neighborhoods, language clubs,
+              commuting tips and the little things nobody puts in an official guide.
+            </p>
+            <div class="search">
+              <input
+                id="searchInput"
+                placeholder="Try “VU dorms”, “Naujamiestis”, “language clubs”..."
+                aria-label="Search experiences"
+              />
+              <button id="searchButton" type="button">Explore</button>
+            </div>
+          </div>
+
+          <div class="hero-card">
+            <div>
+              <div class="badge">🎥 Resident video</div>
+              <h3>“What my VU dorm actually looks like”</h3>
+              <p>Shot by a current student. No agency photos. No sponsored script.</p>
+            </div>
+            <div class="video-placeholder" role="button" tabindex="0">▶</div>
+          </div>
+        </section>
+
+        <section class="section" id="explore">
+          <div class="section-head">
+            <div>
+              <h2>Explore real life</h2>
+              <div class="section-sub">A starting set of community-made guides.</div>
+            </div>
+          </div>
+
+          <div class="filter-row" aria-label="Content filters">
+            <button class="pill active" data-filter="all" type="button">All</button>
+            <button class="pill" data-filter="housing" type="button">Housing</button>
+            <button class="pill" data-filter="university" type="button">University</button>
+            <button class="pill" data-filter="neighborhood" type="button">Neighborhoods</button>
+            <button class="pill" data-filter="community" type="button">Community</button>
+          </div>
+
+          <div class="grid" id="cards" aria-live="polite"></div>
+
+          <div class="callout" id="contribute">
+            <div>
+              <h3>You already know something a newcomer needs.</h3>
+              <p>
+                Share a short video, photo walkthrough or honest guide. Your
+                experience becomes someone else’s shortcut.
+              </p>
+            </div>
+            <button class="outline" id="contributeBtn" type="button">Become a contributor</button>
+          </div>
+        </section>
+      </main>
+
+      <footer id="how">
+        <div>
+          <span>MoveLT prototype · community-first relocation</span>
+          <span>No agency listings in the community feed.</span>
+        </div>
+      </footer>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

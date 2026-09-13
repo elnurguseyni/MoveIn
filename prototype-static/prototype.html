@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MoveLT — See Lithuania Through People Who Live Here</title>
+<style>
+  :root{
+    --bg:#f7f7f4; --card:#fff; --ink:#111; --muted:#6a6a65;
+    --line:#e4e4df; --soft:#f0f0eb; --accent:#111;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+  a{text-decoration:none;color:inherit}
+  .landing{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;background:radial-gradient(circle at top,#fff 0%,#f7f7f4 38%,#efece5 100%)}
+  .landing-card{width:min(760px,100%);background:rgba(255,255,255,.82);border:1px solid var(--line);box-shadow:0 20px 60px rgba(17,17,17,.08);border-radius:28px;padding:32px}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#111;color:#fff;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .landing h1{margin:24px 0 8px;font-size:clamp(2.8rem,5vw,5rem);line-height:.92;letter-spacing:-.07em}
+  .landing p{margin:0 0 26px;color:var(--muted);font-size:1.05rem;line-height:1.5}
+  .selector-block{margin-top:24px}
+  .selector-label{font-size:12px;font-weight:800;letter-spacing:.08em;color:#555;text-transform:uppercase;margin-bottom:12px}
+  .country-grid,.path-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+  .choice{appearance:none;border:1px solid var(--line);background:white;border-radius:16px;padding:14px 16px;font:inherit;font-weight:700;color:var(--ink);cursor:pointer;transition:all .18s ease}
+  .choice:hover{transform:translateY(-1px);border-color:#c9c9c4}
+  .choice.selected{background:#111;color:#fff;border-color:#111;box-shadow:0 12px 26px rgba(17,17,17,.12)}
+  .landing-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:30px;padding-top:22px;border-top:1px solid var(--line)}
+  .ghost-btn,.primary-btn{border-radius:12px;padding:12px 18px;font:inherit;font-weight:800;cursor:pointer}
+  .ghost-btn{background:white;border:1px solid var(--line);color:var(--ink)}
+  .primary-btn{background:#111;color:#fff;border:0;min-width:170px}
+  .primary-btn:disabled{opacity:.4;cursor:not-allowed}
+  .page-shell{display:none}
+  body.landed .landing{display:none}
+  body.landed .page-shell{display:block}
+  .top{position:sticky;top:0;z-index:10;background:rgba(247,247,244,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+  nav{max-width:1180px;margin:auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+  .brand{font-weight:850;letter-spacing:-.04em;font-size:22px}
+  .brand span{font-weight:500;color:var(--muted)}
+  .navlinks{display:flex;gap:22px;color:#555;font-size:14px}
+  .cta{background:#111;color:white;border-radius:999px;padding:10px 16px;font-weight:700;font-size:14px}
+  .hero{max-width:1180px;margin:0 auto;padding:68px 24px 34px;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+  h1{font-size:64px;line-height:.96;letter-spacing:-.06em;margin:0 0 22px}
+  .hero p{font-size:19px;line-height:1.55;color:var(--muted);max-width:650px;margin:0 0 28px}
+  .search{display:flex;background:white;border:1px solid var(--line);padding:7px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.05);max-width:620px}
+  .search input{flex:1;border:0;outline:0;padding:13px 14px;font-size:15px;background:transparent}
+  .search button{border:0;background:#111;color:white;border-radius:11px;padding:0 20px;font-weight:750;cursor:pointer}
+  .hero-card{background:#111;color:#fff;border-radius:28px;padding:28px;min-height:390px;display:flex;flex-direction:column;justify-content:space-between}
+  .badge{display:inline-flex;width:max-content;gap:8px;align-items:center;background:#242424;border-radius:999px;padding:8px 12px;font-size:12px;color:#ddd}
+  .hero-card h3{font-size:30px;line-height:1.05;letter-spacing:-.04em;margin:20px 0 10px}
+  .hero-card p{color:#c8c8c8;font-size:14px}
+  .video-placeholder{height:150px;border-radius:18px;background:linear-gradient(135deg,#313131,#171717);display:flex;align-items:center;justify-content:center;font-size:46px}
+  .section{max-width:1180px;margin:0 auto;padding:32px 24px 70px}
+  .section-head{display:flex;justify-content:space-between;align-items:end;margin-bottom:18px}
+  .section h2{font-size:33px;letter-spacing:-.04em;margin:0}
+  .section-sub{color:var(--muted);margin:7px 0 0}
+  .filter-row{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 24px}
+  .pill{border:1px solid var(--line);background:white;padding:9px 13px;border-radius:999px;font-size:13px;cursor:pointer}
+  .pill.active{background:#111;color:#fff;border-color:#111}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+  .thumb{height:165px;background:#e7e7e2;position:relative;display:flex;align-items:center;justify-content:center}
+  .thumb .play{width:48px;height:48px;border-radius:50%;background:rgba(17,17,17,.9);color:#fff;display:flex;align-items:center;justify-content:center}
+  .tag{position:absolute;left:12px;top:12px;background:rgba(255,255,255,.93);border-radius:999px;padding:6px 9px;font-size:11px;font-weight:700}
+  .cardbody{padding:16px}
+  .cardbody h3{margin:0 0 5px;font-size:19px;letter-spacing:-.02em}
+  .meta{color:#777;font-size:12px;margin-bottom:12px}
+  .quote{font-size:13px;line-height:1.45;color:#42423f;min-height:58px}
+  .person{display:flex;align-items:center;gap:9px;margin-top:14px}
+  .avatar{width:30px;height:30px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+  .person b{font-size:12px}.person span{font-size:11px;color:#777}
+  .rating{margin-left:auto;font-size:12px;font-weight:700}
+  .callout{margin-top:18px;border:1px solid var(--line);background:#fff;border-radius:22px;padding:24px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+  .callout h3{margin:0 0 6px;font-size:21px}.callout p{margin:0;color:var(--muted);font-size:13px}
+  .outline{border:1px solid #111;background:white;color:#111;border-radius:12px;padding:12px 16px;font-weight:750;cursor:pointer;white-space:nowrap}
+  footer{border-top:1px solid var(--line);padding:28px 24px;color:#777;font-size:12px}
+  footer div{max-width:1180px;margin:auto;display:flex;justify-content:space-between}
+  @media(max-width:850px){
+    .hero{grid-template-columns:1fr;padding-top:42px}.hero-card{display:none} h1{font-size:48px}
+    .grid{grid-template-columns:1fr 1fr}.navlinks{display:none}
+  }
+  @media(max-width:560px){.grid{grid-template-columns:1fr}.search{flex-direction:column;gap:8px}.search button{height:44px}}
+</style>
+</head>
+<body>
+<div id="landingScreen" class="landing">
+  <div class="landing-card">
+    <div class="eyebrow">MoveIn</div>
+    <h1>Start your next chapter.</h1>
+    <p>Choose the country you want to explore and the path that fits your move.</p>
+
+    <div class="selector-block">
+      <div class="selector-label">Choose a country</div>
+      <div class="country-grid">
+        <button class="choice selected" data-country="Lithuania" type="button">Lithuania</button>
+        <button class="choice" data-country="Poland" type="button">Poland</button>
+        <button class="choice" data-country="Germany" type="button">Germany</button>
+        <button class="choice" data-country="Spain" type="button">Spain</button>
+      </div>
+    </div>
+
+    <div class="selector-block">
+      <div class="selector-label">What brings you?</div>
+      <div class="path-grid">
+        <button class="choice selected" data-path="Student" type="button">Student</button>
+        <button class="choice" data-path="Worker" type="button">Worker</button>
+        <button class="choice" data-path="Moving In" type="button">Moving In</button>
+        <button class="choice" data-path="Remote Work" type="button">Remote Work</button>
+      </div>
+    </div>
+
+    <div class="landing-actions">
+      <button class="ghost-btn" type="button" id="resetSelection">Reset</button>
+      <button class="primary-btn" type="button" id="continueBtn">Explore Lithuania</button>
+    </div>
+  </div>
+</div>
+
+<div id="pageShell" class="page-shell">
+<header class="top">
+  <nav>
+    <div class="brand">MoveIN <span>/ Lithuania</span></div>
+    <div class="navlinks">
+      <a href="#explore">Explore</a><a href="#how">How it works</a><a href="#contribute">Contribute</a>
+    </div>
+    <a class="cta" href="#contribute">Share your experience</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div>
+      <div class="badge">🇱🇹 Built from real experiences</div>
+      <h1>See Lithuania through people who actually live here.</h1>
+      <p>Honest dorm tours, university life, neighborhoods, language clubs, commuting tips and the little things nobody puts in an official guide.</p>
+      <div class="search">
+        <input id="searchInput" placeholder="Try “VU dorms”, “Naujamiestis”, “language clubs”..." />
+        <button onclick="runSearch()">Explore</button>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div>
+        <div class="badge">🎥 Resident video</div>
+        <h3>“What my VU dorm actually looks like”</h3>
+        <p>Shot by a current student. No agency photos. No sponsored script.</p>
+      </div>
+      <div class="video-placeholder" onclick="alert('Prototype: this would open the full resident video.')">▶</div>
+    </div>
+  </section>
+
+  <section class="section" id="explore">
+    <div class="section-head">
+      <div>
+        <h2>Explore real life</h2>
+        <div class="section-sub">A starting set of community-made guides.</div>
+      </div>
+    </div>
+    <div class="filter-row">
+      <button class="pill active" data-filter="all">All</button>
+      <button class="pill" data-filter="housing">Housing</button>
+      <button class="pill" data-filter="university">University</button>
+      <button class="pill" data-filter="neighborhood">Neighborhoods</button>
+      <button class="pill" data-filter="community">Community</button>
+    </div>
+
+    <div class="grid" id="cards">
+      <article class="card" data-type="housing" data-search="vu dormitory dorm housing">
+        <div class="thumb"><div class="tag">HOUSING · VIDEO</div><div class="play">▶</div></div>
+        <div class="cardbody">
+          <h3>My VU dorm room tour</h3><div class="meta">Vilnius · 3 min video</div>
+          <div class="quote">“The room is basic, but the location and social life are why I stayed.”</div>
+          <div class="person"><div class="avatar">A</div><div><b>Ana</b><br><span>current resident</span></div><div class="rating">★ 4.8</div></div>
+        </div>
+      </article>
+
+      <article class="card" data-type="neighborhood" data-search="naujamiestis vilnius neighborhood supermarket transport">
+        <div class="thumb"><div class="tag">NEIGHBORHOOD · VIDEO</div><div class="play">▶</div></div>
+        <div class="cardbody">
+          <h3>A student’s Naujamiestis</h3><div class="meta">Vilnius · 5 min walk-through</div>
+          <div class="quote">“Here’s my route to the bus stop, supermarket, gym and the place I usually study.”</div>
+          <div class="person"><div class="avatar">M</div><div><b>Maks</b><br><span>lives nearby</span></div><div class="rating">★ 4.7</div></div>
+        </div>
+      </article>
+
+      <article class="card" data-type="university" data-search="vilnius university vu campus classes exams">
+        <div class="thumb"><div class="tag">UNIVERSITY · GUIDE</div><div class="play">▶</div></div>
+        <div class="cardbody">
+          <h3>My first semester at VU</h3><div class="meta">Vilnius · student guide</div>
+          <div class="quote">“What surprised me, how classes work, and what I would do differently before arriving.”</div>
+          <div class="person"><div class="avatar">S</div><div><b>Sara</b><br><span>VU student</span></div><div class="rating">★ 4.9</div></div>
+        </div>
+      </article>
+
+      <article class="card" data-type="community" data-search="lithuanian language club speaking vilnius meetup">
+        <div class="thumb"><div class="tag">COMMUNITY · VIDEO</div><div class="play">▶</div></div>
+        <div class="cardbody">
+          <h3>I tried a Lithuanian language club</h3><div class="meta">Vilnius · 2 min video</div>
+          <div class="quote">“I was nervous going alone. Here’s what the first session actually felt like.”</div>
+          <div class="person"><div class="avatar">E</div><div><b>Emil</b><br><span>international student</span></div><div class="rating">★ 4.6</div></div>
+        </div>
+      </article>
+
+      <article class="card" data-type="housing" data-search="kaunas dorm apartment rent housing">
+        <div class="thumb"><div class="tag">HOUSING · REVIEW</div><div class="play">▶</div></div>
+        <div class="cardbody">
+          <h3>Dorm vs. private room in Kaunas</h3><div class="meta">Kaunas · comparison</div>
+          <div class="quote">“I lived in both. Here’s what changed in price, privacy, commute and social life.”</div>
+          <div class="person"><div class="avatar">D</div><div><b>Davit</b><br><span>former resident</span></div><div class="rating">★ 4.8</div></div>
+        </div>
+      </article>
+
+      <article class="card" data-type="community" data-search="international students meetup friends vilnius">
+        <div class="thumb"><div class="tag">COMMUNITY · GUIDE</div><div class="play">▶</div></div>
+        <div class="cardbody">
+          <h3>Where I met people after moving</h3><div class="meta">Vilnius · community guide</div>
+          <div class="quote">“Three places where I actually made friends instead of just saving an event on a calendar.”</div>
+          <div class="person"><div class="avatar">L</div><div><b>Lina</b><br><span>local contributor</span></div><div class="rating">★ 4.9</div></div>
+        </div>
+      </article>
+    </div>
+
+    <div class="callout" id="contribute">
+      <div>
+        <h3>You already know something a newcomer needs.</h3>
+        <p>Share a short video, photo walkthrough or honest guide. Your experience becomes someone else’s shortcut.</p>
+      </div>
+      <button class="outline" onclick="alert('Prototype: contributor onboarding would open here.')">Become a contributor</button>
+    </div>
+  </section>
+</main>
+
+<footer id="how">
+  <div><span>MoveLT prototype · community-first relocation</span><span>No agency listings in the community feed.</span></div>
+</footer>
+
+<script>
+  const pills=[...document.querySelectorAll('.pill')];
+  const cards=[...document.querySelectorAll('.card')];
+  const countryButtons=[...document.querySelectorAll('[data-country]')];
+  const pathButtons=[...document.querySelectorAll('[data-path]')];
+  const continueBtn=document.getElementById('continueBtn');
+  const resetSelection=document.getElementById('resetSelection');
+  let selectedCountry='Lithuania';
+  let selectedPath='Student';
+
+  countryButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      selectedCountry = button.dataset.country;
+      countryButtons.forEach(btn => btn.classList.toggle('selected', btn === button));
+      updateContinueState();
+    });
+  });
+
+  pathButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      selectedPath = button.dataset.path;
+      pathButtons.forEach(btn => btn.classList.toggle('selected', btn === button));
+      updateContinueState();
+    });
+  });
+
+  function updateContinueState(){
+    continueBtn.disabled = !selectedCountry || !selectedPath;
+    continueBtn.textContent = selectedCountry === 'Lithuania' ? 'Explore Lithuania' : 'Continue';
+  }
+
+  continueBtn.addEventListener('click', () => {
+    if (selectedCountry === 'Lithuania') {
+      document.body.classList.add('landed');
+      window.scrollTo({top:0, behavior:'instant'});
+      return;
+    }
+
+    alert(selectedCountry + ' is coming soon. Lithuania is available right now.');
+  });
+
+  resetSelection.addEventListener('click', () => {
+    selectedCountry = 'Lithuania';
+    selectedPath = 'Student';
+    countryButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.country === selectedCountry));
+    pathButtons.forEach(btn => btn.classList.toggle('selected', btn.dataset.path === selectedPath));
+    updateContinueState();
+  });
+
+  pills.forEach(p=>p.addEventListener('click',()=>{
+    pills.forEach(x=>x.classList.remove('active')); p.classList.add('active');
+    const f=p.dataset.filter;
+    cards.forEach(c=>c.style.display=(f==='all'||c.dataset.type===f)?'block':'none');
+  }));
+
+  function runSearch(){
+    const q=document.getElementById('searchInput').value.toLowerCase().trim();
+    cards.forEach(c=>{
+      const text=(c.dataset.search+' '+c.innerText).toLowerCase();
+      c.style.display=(!q||text.includes(q))?'block':'none';
+    });
+    document.getElementById('explore').scrollIntoView({behavior:'smooth'});
+  }
+
+  updateContinueState();
+</script>
+</div>
+</body>
+</html>

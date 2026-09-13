@@ -1,0 +1,57 @@
+# MoveIn
+
+MoveIn is a React and Vite relocation community app for exploring real experiences from people living in Lithuania.
+
+## Local development
+
+1. Copy `.env.example` to `.env.local` and add the Supabase URL and publishable key.
+2. Install dependencies with `npm ci`.
+3. Start the app with `npm run dev`.
+
+The Supabase project must have the migration in [`supabase/migrations/20260913000000_create_contributions_and_storage.sql`](supabase/migrations/20260913000000_create_contributions_and_storage.sql) applied before using authentication, contributions, or media uploads. It creates the contributions table, the `community-media` bucket, and the related RLS policies.
+
+To apply migrations with the Supabase CLI:
+
+```bash
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase db push
+```
+
+For local database testing, install and start Docker, then run `npx supabase start` before `npx supabase db reset`. If the CLI is not linked, run the migration SQL directly in the Supabase Dashboard SQL Editor.
+
+## Validation
+
+Run the same checks used by GitHub Actions:
+
+```bash
+npm run lint
+npm run build
+```
+
+The CI workflow is stored in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs on pushes and pull requests targeting `main`.
+
+## Project structure
+
+- `src/App.jsx`: application state, authentication, contributions, and media uploads
+- `src/App.css`: application styles
+- `src/data/content.js`: seed content
+- `src/lib/supabase.js`: Supabase client setup
+- `supabase/migrations/`: versioned database and storage changes
+
+## Original Vite notes
+
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the Oxlint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
