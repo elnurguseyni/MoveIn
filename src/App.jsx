@@ -85,12 +85,15 @@ function App() {
   const [showCountryPage, setShowCountryPage] = useState(false);
   const [showProfilePage, setShowProfilePage] = useState(false);
   const [showAdminPage, setShowAdminPage] = useState(false);
+  const [showNotificationsPage, setShowNotificationsPage] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [postLikeCount, setPostLikeCount] = useState(0);
   const [hasLikedPost, setHasLikedPost] = useState(false);
   const [postComments, setPostComments] = useState([]);
+  const [commentProfiles, setCommentProfiles] = useState({});
   const [commentText, setCommentText] = useState('');
   const [commentNotice, setCommentNotice] = useState('');
+  const [notifications, setNotifications] = useState([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showContributorModal, setShowContributorModal] = useState(false);
   const [editingContribution, setEditingContribution] = useState(null);
@@ -146,6 +149,7 @@ function App() {
       setShowCountryPage(view === '#explore' || view === '#profile' || view === '#admin' || view.startsWith('#post/'));
       setShowProfilePage(view === '#profile');
       setShowAdminPage(view === '#admin');
+      setShowNotificationsPage(view === '#notifications');
       setSelectedPostId(view.startsWith('#post/') ? decodeURIComponent(view.slice(6)) : null);
     };
 
@@ -348,7 +352,17 @@ function App() {
       if (isMounted) {
         setPostLikeCount(likes?.length || 0);
         setHasLikedPost(Boolean(currentUser && likes?.some((like) => like.user_id === currentUser.id)));
-        setPostComments(comments || []);
+        const commentRows = comments || [];
+        setPostComments(commentRows);
+
+        const userIds = [...new Set(commentRows.map((comment) => comment.user_id))];
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, display_name, avatar_url')
+            .in('id', userIds);
+          setCommentProfiles(Object.fromEntries((profiles || []).map((commentProfile) => [commentProfile.id, commentProfile])));
+        }
       }
     };
 
@@ -358,6 +372,26 @@ function App() {
       isMounted = false;
     };
   }, [currentUser, selectedPostId]);
+
+  useEffect(() => {
+    if (!supabase || !currentUser) {
+      return undefined;
+    }
+
+    let isMounted = true;
+    const loadNotifications = async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, message, contribution_id, read_at, created_at')
+        .order('created_at', { ascending: false });
+      if (isMounted) {
+        setNotifications(data || []);
+      }
+    };
+
+    loadNotifications();
+    return () => { isMounted = false; };
+  }, [currentUser]);
 
   function handleReset() {
     setSelectedCountry('Lithuania');
@@ -578,6 +612,10 @@ function App() {
     }
 
     setPostComments((comments) => [...comments, data]);
+    setCommentProfiles((profiles) => ({
+      ...profiles,
+      [currentUser.id]: { id: currentUser.id, display_name: userDisplayName, avatar_url: profile.avatarUrl }
+    }));
     setCommentText('');
     setCommentNotice('');
   }
@@ -1025,12 +1063,15 @@ function App() {
 
       <section className="comments-panel">
         <h2>Comments</h2>
-        {postComments.length > 0 ? postComments.map((comment) => (
+        {postComments.length > 0 ? postComments.map((comment) => {
+          const authorProfile = commentProfiles[comment.user_id];
+          return (
           <div className="comment" key={comment.id}>
-            <strong>{comment.user_id === currentUser?.id ? userDisplayName : 'Community member'}</strong>
-            <p>{comment.body}</p>
+            {authorProfile?.avatar_url ? <img className="comment-avatar" src={authorProfile.avatar_url} alt="" /> : <div className="comment-avatar comment-avatar-fallback">{(authorProfile?.display_name || 'M').charAt(0).toUpperCase()}</div>}
+            <div><strong>{authorProfile?.display_name || 'Community member'}</strong><p>{comment.body}</p></div>
           </div>
-        )) : <p className="empty-state">Be the first to comment.</p>}
+          );
+        }) : <p className="empty-state">Be the first to comment.</p>}
         <form className="comment-form" onSubmit={handleSubmitComment}>
           <textarea value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="Share a helpful thought..." rows="3" />
           <button type="submit" className="primary-btn">Post comment</button>
@@ -1104,6 +1145,41 @@ function App() {
     </section>
   );
 
+  const notificationsPage = (
+    <section className="profile-page" aria-labelledby="notifications-page-title">
+      <div className="profile-page-header">
+        <div>
+          <div className="badge">ACTIVITY</div>
+          <h1 id="notifications-page-title">Notifications</h1>
+          <p>Updates about your posts and community conversations.</p>
+        </div>
+        <button type="button" className="outline" onClick={() => {
+          window.location.hash = '#explore';
+          setShowNotificationsPage(false);
+        }}>Back to Explore</button>
+      </div>
+      <section className="notifications-panel">
+        {notifications.length > 0 ? notifications.map((notification) => (
+          <button
+            type="button"
+            className={notification.read_at ? 'notification read' : 'notification'}
+            key={notification.id}
+            onClick={async () => {
+              if (!notification.read_at && supabase) {
+                await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', notification.id);
+                setNotifications((items) => items.map((item) => item.id === notification.id ? { ...item, read_at: new Date().toISOString() } : item));
+              }
+              if (notification.contribution_id) openPostPage(notification.contribution_id);
+            }}
+          >
+            <strong>{notification.message}</strong>
+            <small>{new Date(notification.created_at).toLocaleString()}</small>
+          </button>
+        )) : <p className="empty-state">No notifications yet.</p>}
+      </section>
+    </section>
+  );
+
   return !showCountryPage ? (
     <div className="landing">
       <div className="landing-card">
@@ -1170,6 +1246,12 @@ function App() {
               setShowAdminPage(false);
             }}>Profile</button>}
             {currentUser && profile.isAdmin && <button type="button" className="nav-link-btn" onClick={openAdminPage}>Admin</button>}
+            {currentUser && <button type="button" className="nav-link-btn" onClick={() => {
+              window.location.hash = '#notifications';
+              setShowNotificationsPage(true);
+              setShowProfilePage(false);
+              setShowAdminPage(false);
+            }}>Notifications{notifications.some((notification) => !notification.read_at) ? ` (${notifications.filter((notification) => !notification.read_at).length})` : ''}</button>}
             <a href="#explore">Explore</a>
             <a href="#how">How it works</a>
             <a href="#contribute">Contribute</a>
@@ -1189,7 +1271,7 @@ function App() {
       </header>
 
       <main>
-      {selectedPostId ? postPage : showAdminPage && profile.isAdmin ? adminPage : showProfilePage ? profilePage : <>
+      {selectedPostId ? postPage : showNotificationsPage ? notificationsPage : showAdminPage && profile.isAdmin ? adminPage : showProfilePage ? profilePage : <>
         {submissionNotice.message && (
           <div className={`submit-status ${submissionNotice.type}`}>
             {submissionNotice.message}

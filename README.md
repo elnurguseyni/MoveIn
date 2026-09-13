@@ -32,6 +32,8 @@ Moderation requires [`supabase/migrations/20260913000005_add_contribution_modera
 
 Post detail interactions require [`supabase/migrations/20260913000006_add_post_interactions.sql`](supabase/migrations/20260913000006_add_post_interactions.sql). It creates likes and comments tables with RLS. Users can favorite posts locally, but must be signed in to like or comment.
 
+Comment notifications require [`supabase/migrations/20260913000007_add_comment_notifications.sql`](supabase/migrations/20260913000007_add_comment_notifications.sql). It creates notifications and a database trigger that alerts the post owner when another user comments.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:
