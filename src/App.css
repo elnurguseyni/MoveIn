@@ -76,6 +76,50 @@ html {
   font-size: 17px;
 }
 
+.post-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.post-facts div {
+  min-width: 112px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft);
+}
+
+.post-facts dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.post-facts dd {
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+.takeaway {
+  margin: 22px 0;
+  padding: 16px;
+  border-left: 3px solid var(--ink);
+  background: var(--soft);
+}
+
+.takeaway h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.takeaway p {
+  margin: 0;
+  line-height: 1.5;
+}
+
 .post-detail-author,
 .post-detail-author small {
   display: flex;
@@ -1056,6 +1100,31 @@ h1 {
   margin: 18px 0 24px;
 }
 
+.discovery-selectors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: -10px 0 24px;
+}
+
+.discovery-selectors label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.discovery-selectors select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  padding: 0 10px;
+  color: var(--ink);
+}
+
 .pill {
   border: 1px solid var(--line);
   background: white;
@@ -1546,5 +1615,15 @@ footer div {
   .card-trust {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .discovery-selectors,
+  .discovery-selectors label {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .discovery-selectors select {
+    width: 100%;
   }
 }

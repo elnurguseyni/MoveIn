@@ -19,6 +19,8 @@ const PATH_RECOMMENDATIONS = {
   'Remote Work': ['neighborhood', 'community', 'housing']
 };
 
+const BUDGET_OPTIONS = ['Under €400', '€400–700', '€700+'];
+
 function createCroppedImage(imageSrc, pixelCrop) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -64,6 +66,9 @@ const normalizeCard = (card, fallbackId = '') => {
     role: card.role ?? 'community member',
     rating: card.rating ?? '★ 5.0',
     publishedAt: card.publishedAt ?? null,
+    city: card.city ?? card.meta?.split(' · ')[0] ?? 'Vilnius',
+    budget: card.budget ?? '',
+    keyTakeaway: card.keyTakeaway ?? '',
     status: card.status ?? 'approved'
   };
 };
@@ -81,6 +86,9 @@ const mapContributionToCard = (row) => normalizeCard({
   role: row.created_by ? 'verified contributor' : 'community member',
   rating: row.rating || '★ 5.0',
   publishedAt: row.created_at || null,
+  city: row.city || 'Vilnius',
+  budget: row.budget_range || '',
+  keyTakeaway: row.key_takeaway || '',
   search: `${row.city || 'vilnius'} ${row.category || 'community'} ${row.title || 'experience'}`,
   videoUrl: row.media_url || row.video_url || null,
   mediaType: row.media_type || (row.media_url ? (row.media_url.match(/\.(mp4|mov|webm|ogg|m4v)$/i) ? 'video' : 'image') : 'video')
@@ -90,6 +98,8 @@ function App() {
   const [selectedCountry, setSelectedCountry] = useState('Lithuania');
   const [selectedPath, setSelectedPath] = useState('Student');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [selectedCityFilter, setSelectedCityFilter] = useState('all');
+  const [selectedBudgetFilter, setSelectedBudgetFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCountryPage, setShowCountryPage] = useState(false);
   const [showProfilePage, setShowProfilePage] = useState(false);
@@ -133,7 +143,9 @@ function App() {
     title: '',
     city: '',
     category: 'housing',
+    budget: '',
     details: '',
+    keyTakeaway: '',
     videoName: '',
     videoUrl: ''
   });
@@ -277,9 +289,11 @@ function App() {
       const isVisible = card.status === 'approved'
         || (card.status === 'pending' && card.createdBy === currentUser?.id);
       const matchesFilter = activeFilter === 'all' || card.type === activeFilter;
+      const matchesCity = selectedCityFilter === 'all' || card.city === selectedCityFilter;
+      const matchesBudget = selectedBudgetFilter === 'all' || card.budget === selectedBudgetFilter;
       const searchText = `${card.search ?? ''} ${card.title ?? ''} ${card.meta ?? ''} ${card.quote ?? ''} ${card.author ?? ''} ${card.role ?? ''}`.toLowerCase();
       const matchesQuery = !searchQuery || searchText.includes(searchQuery.toLowerCase());
-      return isVisible && matchesFilter && matchesQuery;
+      return isVisible && matchesFilter && matchesCity && matchesBudget && matchesQuery;
     }).sort((a, b) => {
       if (activeFilter !== 'all') return 0;
       const rank = (type) => {
@@ -288,7 +302,9 @@ function App() {
       };
       return rank(a.type) - rank(b.type);
     });
-  }, [activeFilter, contentItems, currentUser, searchQuery, selectedPath]);
+  }, [activeFilter, contentItems, currentUser, searchQuery, selectedBudgetFilter, selectedCityFilter, selectedPath]);
+
+  const cityOptions = useMemo(() => [...new Set(contentItems.map((card) => card.city).filter(Boolean))].sort(), [contentItems]);
 
   const myContributionCards = useMemo(() => {
     if (!currentUser) {
@@ -780,7 +796,9 @@ function App() {
       title: card.title,
       city: card.meta?.split(' · ')[0] || 'Vilnius',
       category: card.type || 'community',
+      budget: card.budget || '',
       details: card.quote?.replace(/^“|”$/g, '') || '',
+      keyTakeaway: card.keyTakeaway || '',
       videoName: '',
       videoUrl: ''
     });
@@ -809,7 +827,9 @@ function App() {
       tag: hasVideo ? 'VIDEO · STORY' : `${submissionForm.category.toUpperCase()} · GUIDE`,
       title: submissionForm.title || 'New contributor story',
       city: submissionForm.city || 'Vilnius',
+      budget: submissionForm.budget,
       details: submissionForm.details || 'Here is my honest experience from living here.',
+      keyTakeaway: submissionForm.keyTakeaway.trim(),
       author: authorName,
       role: currentUser ? 'verified contributor' : 'community member',
       rating: '★ 5.0',
@@ -827,7 +847,9 @@ function App() {
             title: newContribution.title,
             city: newContribution.city,
             category: newContribution.category,
+            budget_range: newContribution.budget,
             details: newContribution.details,
+            key_takeaway: newContribution.keyTakeaway,
             quote: `“${newContribution.details}”`,
             meta: `${newContribution.city} · community guide`
           })
@@ -846,10 +868,13 @@ function App() {
           id: editingContribution.id,
           createdBy: currentUser.id,
           type: newContribution.category,
+          city: newContribution.city,
+          budget: newContribution.budget,
           tag: editingContribution.tag,
           title: newContribution.title,
           meta: `${newContribution.city} · community guide`,
           quote: `“${newContribution.details}”`,
+          keyTakeaway: newContribution.keyTakeaway,
           author: authorName,
           search: `${newContribution.city} ${newContribution.category} ${newContribution.title}`
         });
@@ -895,7 +920,9 @@ function App() {
             title: newContribution.title,
             city: newContribution.city,
             category: newContribution.category,
+            budget_range: newContribution.budget,
             details: newContribution.details,
+            key_takeaway: newContribution.keyTakeaway,
             source: newContribution.source,
             status: 'pending',
             rating: newContribution.rating,
@@ -918,10 +945,13 @@ function App() {
       } else {
         const localCard = normalizeCard({
           type: newContribution.type,
+          city: newContribution.city,
+          budget: newContribution.budget,
           tag: newContribution.tag,
           title: newContribution.title,
           meta: `${newContribution.city} · community guide`,
           quote: `“${newContribution.details}”`,
+          keyTakeaway: newContribution.keyTakeaway,
           author: newContribution.author,
           role: newContribution.role,
           rating: newContribution.rating,
@@ -943,7 +973,9 @@ function App() {
         title: '',
         city: '',
         category: 'housing',
+        budget: '',
         details: '',
+        keyTakeaway: '',
         videoName: '',
         videoUrl: ''
       });
@@ -1105,6 +1137,17 @@ function App() {
           <h1 id="post-page-title">{selectedPost.title}</h1>
           <div className="meta">{selectedPost.meta}</div>
           <p className="post-detail-quote">{selectedPost.quote}</p>
+          <dl className="post-facts">
+            <div><dt>City</dt><dd>{selectedPost.city}</dd></div>
+            {selectedPost.budget && <div><dt>Typical budget</dt><dd>{selectedPost.budget}</dd></div>}
+            <div><dt>Published</dt><dd>{formatPublishedAt(selectedPost.publishedAt).replace('Published ', '')}</dd></div>
+          </dl>
+          {selectedPost.keyTakeaway && (
+            <section className="takeaway" aria-labelledby="takeaway-title">
+              <h2 id="takeaway-title">What I wish I knew</h2>
+              <p>{selectedPost.keyTakeaway}</p>
+            </section>
+          )}
           <div className="post-detail-author">
             <div className="avatar">{selectedPost.author.charAt(0)}</div>
             <div><strong>{selectedPost.author}</strong><small>{selectedPost.role}</small></div>
@@ -1416,6 +1459,23 @@ function App() {
             ))}
           </div>
 
+          <div className="discovery-selectors">
+            <label>
+              City
+              <select value={selectedCityFilter} onChange={(event) => setSelectedCityFilter(event.target.value)}>
+                <option value="all">All cities</option>
+                {cityOptions.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
+            </label>
+            <label>
+              Typical budget
+              <select value={selectedBudgetFilter} onChange={(event) => setSelectedBudgetFilter(event.target.value)}>
+                <option value="all">Any budget</option>
+                {BUDGET_OPTIONS.map((budget) => <option key={budget} value={budget}>{budget}</option>)}
+              </select>
+            </label>
+          </div>
+
           <div className="grid" id="cards" aria-live="polite">
             {filteredCards.map((card) => {
               const cardId = card.id ?? `${card.title}-${card.author}`;
@@ -1630,6 +1690,17 @@ function App() {
               </label>
 
               <label>
+                Typical monthly budget
+                <select
+                  value={submissionForm.budget}
+                  onChange={(event) => setSubmissionForm({ ...submissionForm, budget: event.target.value })}
+                >
+                  <option value="">Not relevant / prefer not to say</option>
+                  {BUDGET_OPTIONS.map((budget) => <option key={budget} value={budget}>{budget}</option>)}
+                </select>
+              </label>
+
+              <label>
                 Upload a video or photo
                 <input
                   type="file"
@@ -1649,6 +1720,16 @@ function App() {
                   onChange={(event) => setSubmissionForm({ ...submissionForm, details: event.target.value })}
                   placeholder="Share something helpful for someone moving here..."
                   required
+                />
+              </label>
+
+              <label>
+                What do you wish you knew before moving?
+                <textarea
+                  rows="3"
+                  value={submissionForm.keyTakeaway}
+                  onChange={(event) => setSubmissionForm({ ...submissionForm, keyTakeaway: event.target.value })}
+                  placeholder="One practical thing that would have made your first weeks easier."
                 />
               </label>
 

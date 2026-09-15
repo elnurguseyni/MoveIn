@@ -38,6 +38,8 @@ Mentions require [`supabase/migrations/20260913000008_add_comment_mentions.sql`]
 
 Apply [`supabase/migrations/20260913000009_improve_mention_notifications.sql`](supabase/migrations/20260913000009_improve_mention_notifications.sql) to update the notification text so admins receive messages such as “Someone tagged you in a comment on: ...”.
 
+Apply [`supabase/migrations/20260915000010_add_contribution_decision_fields.sql`](supabase/migrations/20260915000010_add_contribution_decision_fields.sql) to store each contributor's optional monthly-budget range and “what I wish I knew” takeaway.
+
 ## Google login
 
 The login modal includes Google OAuth through Supabase. To enable it:
