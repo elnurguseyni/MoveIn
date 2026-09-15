@@ -3,7 +3,6 @@
   --card: #ffffff;
   --ink: #111111;
   --muted: #6a6a65;
-  cursor: pointer;
   --line: #e4e4df;
   --soft: #f0f0eb;
   --accent: #111111;
@@ -245,6 +244,16 @@ textarea {
   font: inherit;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role='link']:focus-visible {
+  outline: 3px solid #3d73d8;
+  outline-offset: 3px;
+}
+
 .landing {
   min-height: 100vh;
   display: flex;
@@ -340,6 +349,24 @@ textarea {
   color: #fff;
   border-color: #111;
   box-shadow: 0 12px 26px rgba(17, 17, 17, 0.12);
+}
+
+.choice:disabled {
+  cursor: not-allowed;
+  color: #8a8a84;
+  background: #f4f4f0;
+  box-shadow: none;
+}
+
+.choice:disabled:hover {
+  transform: none;
+  border-color: var(--line);
+}
+
+.availability-note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .landing-actions {
@@ -1055,6 +1082,13 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 20px;
   overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(17, 17, 17, 0.09);
 }
 
 .thumb {
@@ -1124,6 +1158,22 @@ h1 {
   align-items: center;
   gap: 9px;
   margin-top: 14px;
+}
+
+.card-trust {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.card-trust span:first-child {
+  color: #276749;
 }
 
 .avatar {
@@ -1414,7 +1464,16 @@ footer div {
   }
 
   .hero-card {
-    display: none;
+    min-height: auto;
+    padding: 22px;
+  }
+
+  .hero-card h3 {
+    font-size: 24px;
+  }
+
+  .video-placeholder {
+    height: 112px;
   }
 
   h1 {
@@ -1482,5 +1541,10 @@ footer div {
   .nav-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .card-trust {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

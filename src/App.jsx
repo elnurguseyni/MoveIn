@@ -12,6 +12,13 @@ const STORAGE_KEYS = {
 
 const STORAGE_BUCKET = 'community-media';
 
+const PATH_RECOMMENDATIONS = {
+  Student: ['university', 'housing', 'community'],
+  Worker: ['housing', 'neighborhood', 'community'],
+  'Moving In': ['housing', 'neighborhood', 'community'],
+  'Remote Work': ['neighborhood', 'community', 'housing']
+};
+
 function createCroppedImage(imageSrc, pixelCrop) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -56,6 +63,7 @@ const normalizeCard = (card, fallbackId = '') => {
     author: card.author ?? 'Community member',
     role: card.role ?? 'community member',
     rating: card.rating ?? '★ 5.0',
+    publishedAt: card.publishedAt ?? null,
     status: card.status ?? 'approved'
   };
 };
@@ -72,6 +80,7 @@ const mapContributionToCard = (row) => normalizeCard({
   author: row.author || 'Community member',
   role: row.created_by ? 'verified contributor' : 'community member',
   rating: row.rating || '★ 5.0',
+  publishedAt: row.created_at || null,
   search: `${row.city || 'vilnius'} ${row.category || 'community'} ${row.title || 'experience'}`,
   videoUrl: row.media_url || row.video_url || null,
   mediaType: row.media_type || (row.media_url ? (row.media_url.match(/\.(mp4|mov|webm|ogg|m4v)$/i) ? 'video' : 'image') : 'video')
@@ -263,6 +272,7 @@ function App() {
   }, []);
 
   const filteredCards = useMemo(() => {
+    const recommendedTypes = PATH_RECOMMENDATIONS[selectedPath] || [];
     return contentItems.filter((card) => {
       const isVisible = card.status === 'approved'
         || (card.status === 'pending' && card.createdBy === currentUser?.id);
@@ -270,8 +280,15 @@ function App() {
       const searchText = `${card.search ?? ''} ${card.title ?? ''} ${card.meta ?? ''} ${card.quote ?? ''} ${card.author ?? ''} ${card.role ?? ''}`.toLowerCase();
       const matchesQuery = !searchQuery || searchText.includes(searchQuery.toLowerCase());
       return isVisible && matchesFilter && matchesQuery;
+    }).sort((a, b) => {
+      if (activeFilter !== 'all') return 0;
+      const rank = (type) => {
+        const index = recommendedTypes.indexOf(type);
+        return index === -1 ? recommendedTypes.length : index;
+      };
+      return rank(a.type) - rank(b.type);
     });
-  }, [activeFilter, contentItems, currentUser, searchQuery]);
+  }, [activeFilter, contentItems, currentUser, searchQuery, selectedPath]);
 
   const myContributionCards = useMemo(() => {
     if (!currentUser) {
@@ -286,13 +303,8 @@ function App() {
   const continueLabel = selectedCountry === 'Lithuania' ? 'Explore Lithuania' : 'Continue';
 
   function handleContinue() {
-    if (selectedCountry === 'Lithuania') {
-      window.location.hash = '#explore';
-      setShowCountryPage(true);
-      return;
-    }
-
-    alert(`${selectedCountry} is coming soon. Lithuania is available right now.`);
+    window.location.hash = '#explore';
+    setShowCountryPage(true);
   }
 
   function openAdminPage() {
@@ -308,6 +320,18 @@ function App() {
     setShowProfilePage(false);
     setShowAdminPage(false);
     setSelectedPostId(String(cardId));
+  }
+
+  function handleCardKeyDown(event, cardId) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openPostPage(cardId);
+    }
+  }
+
+  function formatPublishedAt(publishedAt) {
+    if (!publishedAt) return 'Community guide';
+    return `Published ${new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric' }).format(new Date(publishedAt))}`;
   }
 
   useEffect(() => {
@@ -1250,11 +1274,14 @@ function App() {
                 type="button"
                 className={`choice ${selectedCountry === country ? 'selected' : ''}`}
                 onClick={() => setSelectedCountry(country)}
+                disabled={country !== 'Lithuania'}
+                aria-describedby={country !== 'Lithuania' ? 'country-availability' : undefined}
               >
                 {country}
               </button>
             ))}
           </div>
+          <p className="availability-note" id="country-availability">Lithuania is available now. Other destinations are coming soon.</p>
         </div>
 
         <div className="selector-block">
@@ -1372,7 +1399,7 @@ function App() {
           <div className="section-head">
             <div>
               <h2>Explore real life</h2>
-              <div className="section-sub">A starting set of community-made guides.</div>
+              <div className="section-sub">Recommended for {selectedPath.toLowerCase()} — then ordered by what helps you settle in first.</div>
             </div>
           </div>
 
@@ -1395,12 +1422,21 @@ function App() {
               const isSaved = savedGuides.includes(cardId);
 
               return (
-                <article key={cardId} className="card" data-type={card.type} onClick={() => openPostPage(cardId)}>
+                <article
+                  key={cardId}
+                  className="card"
+                  data-type={card.type}
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Read ${card.title}`}
+                  onClick={() => openPostPage(cardId)}
+                  onKeyDown={(event) => handleCardKeyDown(event, cardId)}
+                >
                   <div className="thumb">
                     <div className="tag">{card.tag}</div>
                     {card.videoUrl ? (
                       card.mediaType === 'video' ? (
-                        <video className="thumb-media" src={card.videoUrl} controls playsInline muted />
+                        <video className="thumb-media" src={card.videoUrl} playsInline muted preload="metadata" />
                       ) : (
                         <img className="thumb-media" src={card.videoUrl} alt={card.title} />
                       )
@@ -1425,6 +1461,10 @@ function App() {
                         <span>{card.role}</span>
                       </div>
                       <div className="rating">{card.rating}</div>
+                    </div>
+                    <div className="card-trust">
+                      <span>{card.createdBy ? '✓ Authenticated contributor' : 'Community guide'}</span>
+                      <span>{formatPublishedAt(card.publishedAt)}</span>
                     </div>
                   </div>
                 </article>
